@@ -1,0 +1,33 @@
+{
+  "_comment": "fixture-watch configuration. Edit this file in the GitHub web UI; the watcher reads it on every run. Everything the watcher follows is here — nothing is hardcoded in the scripts.",
+
+  "tenant": "basketball-victoria",
+  "sport": "basketball",
+  "stattrackBase": "https://markjovic.github.io/stattrack/",
+
+  "players": [
+    {
+      "uuid": "0afc7690-c2db-4644-b039-af1c34520af3",
+      "name": "Toby",
+      "pinnedTeams": []
+    }
+  ],
+
+  "_completeFixtureSlotsEvery": "Reduced cadence, and it applies ONLY to a team that has a game in EVERY non-finals round of its grade AND still has a game to come — nothing is left to publish for it until finals. Everything else is checked on EVERY slot, including a team missing rounds (a fixture block is being published) and a team whose last scheduled game has passed (the finals hunt). Nothing is ever stopped by this — see stopAfterSeasonEndDays.",
+  "completeFixtureSlotsEvery": 4,
+
+  "_gradeRoundsRefreshHours": "How long a grade's round list is cached in state before it is re-fetched. It is also re-fetched whenever the fixture is incomplete, the grade changes, or the last scheduled game has passed — the case where finals rounds get added.",
+  "gradeRoundsRefreshHours": 12,
+
+  "_activeChangeWindowDays": "A team that changed within this many days stays on the FULL cadence even with a complete fixture, so the aftermath of a regrade is watched closely.",
+  "activeChangeWindowDays": 7,
+
+  "_stopAfterSeasonEndDays": "A team is dropped this many days after its season's endDate. A season with NO endDate is never dropped on age — 808 seasons in the database have none, and a missing date is not an ended season.",
+  "stopAfterSeasonEndDays": 21,
+
+  "_failureAlertCooldownHours": "At most one 'watcher failed' alert in this many hours, so a PlayHQ outage does not spam the phone. The run still goes red every time.",
+  "failureAlertCooldownHours": 6,
+
+  "_maxAlertChars": "Pushover hard limit is 1024. Messages are built up to this and then truncated with a count of what was left out.",
+  "maxAlertChars": 1000
+}
