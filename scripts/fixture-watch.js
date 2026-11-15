@@ -781,13 +781,14 @@ async function gitCommit(paths, message) {
     const roundsStale = !roundsInfo || !roundsInfo.fetchedAt
       || (todayMs - Date.parse(roundsInfo.fetchedAt)) > ROUNDS_REFRESH_H * 3600000
       || !state?.coverage?.complete          // still filling: the round list may have grown
-      || lastGamePassed;                     // finals rounds get added after the last round
+      || lastGamePassed                      // finals rounds get added after the last round
+      || !roundsInfo.list.some(r => r.current); // no current round cached: it has moved on, or was never stored
 
     if (curGid && roundsStale) {
       const gr = await gradeRounds(curGid);
       await sleep(DELAY_MS);
       if (gr.kind === 'ok') {
-        roundsInfo = { gid: curGid, fetchedAt: nowIso(), list: gr.rounds.map(r => ({ id: r.id, name: r.name || null, number: r.number ?? null, isFinalsRound: !!r.isFinalsRound })) };
+        roundsInfo = { gid: curGid, fetchedAt: nowIso(), list: gr.rounds.map(r => ({ id: r.id, name: r.name || null, number: r.number ?? null, current: !!r.current, isFinalsRound: !!r.isFinalsRound })) };
       } else {
         // Could not ask. Keep whatever we had, and let coverage fall to unknown if
         // we had nothing — which routes the team to FULL. Not a run-level failure:
@@ -810,12 +811,34 @@ async function gitCommit(paths, message) {
           .filter(r => (!curGid || r?.grade?.id === curGid) && (r?.fixture?.games || []).some(g => g?.id))
           .map(r => r?.id).filter(Boolean)
       );
-      const needed  = roundsInfo.list.filter(r => !r.isFinalsRound);
+      // ⚠️ ONLY ROUNDS FROM THE CURRENT ROUND ONWARD ARE REQUIRED.
+      // Two things make "a game in every round of the grade" the wrong test:
+      //   1. A REGRADED team's earlier games belong to its OLD grade, so it can
+      //      never hold a game in the new grade's early rounds and would sit at
+      //      incomplete for ever. Measured on real data 2026-11-15: B13 Spirit
+      //      Magic 3 (CR) scored 1/15 against 5 games for exactly this reason.
+      //   2. A team that joined late, had a bye, or whose early rounds were washed
+      //      out is in the same position, and none of it says anything about
+      //      whether the fixture AHEAD has been published.
+      // The question that matters is: is every round from here on scheduled?
+      // `discoverGrade` flags the current round, so that is the cut.
+      const nonFinals    = roundsInfo.list.filter(r => !r.isFinalsRound);
+      const currentRound = roundsInfo.list.find(r => r.current);
+      const heldNumbers  = nonFinals.filter(r => teamRoundIds.has(r.id)).map(r => r.number).filter(n => Number.isFinite(n));
+      // No current round means pre-season or post-season. Fall back to the first
+      // round this team actually holds, and to round 1 when it holds none — both of
+      // which require MORE rounds, never fewer.
+      const fromNumber   = Number.isFinite(currentRound?.number) ? currentRound.number
+                         : (heldNumbers.length ? Math.min(...heldNumbers) : 1);
+      const needed  = nonFinals.filter(r => !Number.isFinite(r.number) || r.number >= fromNumber);
       const missing = needed.filter(r => !teamRoundIds.has(r.id));
       const dates   = Object.values(games).map(g => g.d).filter(Boolean).sort();
       coverage = {
         gid: curGid,
         roundsInGrade: roundsInfo.list.length,
+        fromRound: fromNumber,
+        currentRoundName: currentRound?.name || null,
+        nonFinalsRoundsInGrade: nonFinals.length,
         nonFinalsRounds: needed.length,
         covered: needed.length - missing.length,
         complete: needed.length > 0 && missing.length === 0,
@@ -824,7 +847,7 @@ async function gitCommit(paths, message) {
         lastGameDate: dates.length ? dates[dates.length - 1] : null,
         checkedAt: nowIso(),
       };
-      console.log(`     coverage: ${coverage.covered}/${coverage.nonFinalsRounds} non-finals round(s) hold a game${coverage.complete ? ' — COMPLETE' : `, missing ${coverage.missing.slice(0, 4).join(', ')}${coverage.missing.length > 4 ? ` +${coverage.missing.length - 4}` : ''}`}${coverage.finalsRoundsInGrade ? `; ${coverage.finalsRoundsInGrade} finals round(s) in the grade` : ''}; ${count} game(s); last game ${coverage.lastGameDate || '—'}`);
+      console.log(`     coverage: ${coverage.covered}/${coverage.nonFinalsRounds} round(s) from ${coverage.currentRoundName || `round ${coverage.fromRound}`} onward hold a game${coverage.complete ? ' — COMPLETE' : `, missing ${coverage.missing.slice(0, 4).join(', ')}${coverage.missing.length > 4 ? ` +${coverage.missing.length - 4}` : ''}`} (grade has ${coverage.nonFinalsRoundsInGrade} non-finals${coverage.finalsRoundsInGrade ? ` + ${coverage.finalsRoundsInGrade} finals` : ''}); ${count} game(s); last game ${coverage.lastGameDate || '—'}`);
     } else {
       console.log('     coverage: UNKNOWN (no grade round list) — this team stays on FULL');
     }
@@ -916,7 +939,7 @@ async function gitCommit(paths, message) {
       // Coverage carries timestamps that move on every single check. Comparing the
       // whole object would commit on every slot and bury the fixture history, so
       // only the parts a reader or the next run's cadence depends on are compared.
-      const covSig = (c) => c ? JSON.stringify([c.gid, c.complete, c.covered, c.nonFinalsRounds, c.missing, c.lastGameDate, c.finalsRoundsInGrade]) : 'null';
+      const covSig = (c) => c ? JSON.stringify([c.gid, c.complete, c.covered, c.nonFinalsRounds, c.fromRound, c.missing, c.lastGameDate, c.finalsRoundsInGrade]) : 'null';
       // Only write when something a reader would care about moved. lastCheckedAt
       // alone is not worth a commit on every slot — that is 34 commits a day of
       // nothing, and it would bury the real history.
