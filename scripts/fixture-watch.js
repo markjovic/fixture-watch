@@ -706,7 +706,7 @@ async function gitCommit(paths, message) {
 
   // ── Phase 2 · fixtures ────────────────────────────────────────────────────
   const playerName = (uuid) => (WATCHED.find(w => w.uuid === uuid)?.name) || uuid.slice(0, 8);
-  let checked = 0, skippedReduced = 0, stopped = 0;
+  let checked = 0, skippedReduced = 0, stopped = 0, outOfScope = 0;
 
   for (const [tid, item] of toCheck) {
     const file  = teamStateFile(tid);
@@ -719,9 +719,17 @@ async function gitCommit(paths, message) {
     if (!item.pinned && endDate) {
       const endMs = Date.parse(`${endDate}T00:00:00Z`);
       if (Number.isFinite(endMs) && todayMs > endMs + STOP_AFTER_D * 86400000) {
-        console.log(`\n  − ${label}: season ended ${endDate}, more than ${STOP_AFTER_D} days ago — stopping.`);
-        if (state && !DRY_RUN) { fs.rmSync(file); touched.add(file); }   // no alert to lose: nothing to defer
-        stopped++;
+        // A team with no state file was never watched, so there is nothing to stop.
+        // Calling that "stopping" reads as though something was switched off, which
+        // on a first run would be eight alarming lines about teams from 2024.
+        if (state) {
+          console.log(`\n  − ${label}: season ended ${endDate}, more than ${STOP_AFTER_D} days ago — stopping.`);
+          if (!DRY_RUN) { fs.rmSync(file); touched.add(file); }   // no alert to lose: nothing to defer
+          stopped++;
+        } else {
+          console.log(`\n  · ${label}: season ended ${endDate} — out of scope, never watched.`);
+          outOfScope++;
+        }
         continue;
       }
     }
@@ -790,7 +798,18 @@ async function gitCommit(paths, message) {
 
     let coverage = null;
     if (roundsInfo?.list?.length) {
-      const teamRoundIds = new Set(f.rounds.filter(r => !curGid || r?.grade?.id === curGid).map(r => r?.id).filter(Boolean));
+      // ⚠️ A ROUND OBJECT IN THE RESPONSE IS NOT A GAME.
+      // discoverTeamFixture returns the GRADE's rounds, including rounds this team
+      // holds no game in. Measured on real data 2026-11-15: B13 Spirit Magic 3 came
+      // back with 15 round objects for 5 games and was scored 11/15 covered, which
+      // is nonsense — 5 games cannot cover 11 rounds. A round counts as covered only
+      // when the team actually holds a game in it. A BYE is a game entry, so a bye
+      // round still counts as covered.
+      const teamRoundIds = new Set(
+        f.rounds
+          .filter(r => (!curGid || r?.grade?.id === curGid) && (r?.fixture?.games || []).some(g => g?.id))
+          .map(r => r?.id).filter(Boolean)
+      );
       const needed  = roundsInfo.list.filter(r => !r.isFinalsRound);
       const missing = needed.filter(r => !teamRoundIds.has(r.id));
       const dates   = Object.values(games).map(g => g.d).filter(Boolean).sort();
@@ -805,7 +824,7 @@ async function gitCommit(paths, message) {
         lastGameDate: dates.length ? dates[dates.length - 1] : null,
         checkedAt: nowIso(),
       };
-      console.log(`     coverage: ${coverage.covered}/${coverage.nonFinalsRounds} non-finals round(s)${coverage.complete ? ' — COMPLETE' : `, missing ${coverage.missing.slice(0, 4).join(', ')}${coverage.missing.length > 4 ? ` +${coverage.missing.length - 4}` : ''}`}${coverage.finalsRoundsInGrade ? `; ${coverage.finalsRoundsInGrade} finals round(s) in the grade` : ''}; last game ${coverage.lastGameDate || '—'}`);
+      console.log(`     coverage: ${coverage.covered}/${coverage.nonFinalsRounds} non-finals round(s) hold a game${coverage.complete ? ' — COMPLETE' : `, missing ${coverage.missing.slice(0, 4).join(', ')}${coverage.missing.length > 4 ? ` +${coverage.missing.length - 4}` : ''}`}${coverage.finalsRoundsInGrade ? `; ${coverage.finalsRoundsInGrade} finals round(s) in the grade` : ''}; ${count} game(s); last game ${coverage.lastGameDate || '—'}`);
     } else {
       console.log('     coverage: UNKNOWN (no grade round list) — this team stays on FULL');
     }
@@ -834,11 +853,14 @@ async function gitCommit(paths, message) {
         lines: [
           `${teamMeta.club || ''} · ${teamMeta.seasonName || ''} ${teamMeta.currentGrade ? `· ${teamMeta.currentGrade}` : ''}`.trim(),
           `${count} game(s) on the fixture`,
-          ...Object.values(games)
-            .filter(g => g.d && Date.parse(`${g.d}T23:59:59Z`) >= todayMs)
-            .sort((a, b) => (a.d || '').localeCompare(b.d || ''))
-            .slice(0, 3)
-            .map(g => `  ${describeGame(g)}`),
+          ...(() => {
+            const future = Object.values(games)
+              .filter(g => g.d && Date.parse(`${g.d}T23:59:59Z`) >= todayMs)
+              .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+            // Saying nothing here reads as "no games". Say which it is.
+            if (!future.length) return [coverage && !coverage.complete ? 'No games scheduled ahead — waiting on the next fixture block.' : 'No games scheduled ahead.'];
+            return future.slice(0, 3).map(g => `  ${describeGame(g)}`);
+          })(),
         ].filter(Boolean),
         url, priority: 0, baseline: true,
       });
@@ -904,7 +926,7 @@ async function gitCommit(paths, message) {
     }
   }
 
-  console.log(`\n[fixture-watch] ${checked} team(s) checked, ${skippedReduced} complete-fixture team(s) not due this slot, ${stopped} stopped.`);
+  console.log(`\n[fixture-watch] ${checked} team(s) checked, ${skippedReduced} complete-fixture team(s) not due this slot, ${stopped} stopped, ${outOfScope} out of scope (season long over).`);
 
   // ── Phase 3 · alerts ──────────────────────────────────────────────────────
   const token = process.env.PUSHOVER_TOKEN || '';
