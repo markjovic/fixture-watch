@@ -1,0 +1,68 @@
+# .github/workflows/probe-profile-teams.yml
+#
+# The deciding test for fixture-watch: does a registration appear on
+# publicProfileTeams as soon as the player is registered, or only after their first
+# game? Dispatch only — this is a one-off probe, it writes nothing and commits
+# nothing.
+#
+# ⚠️ NO actions/setup-node IN THIS JOB. It calls api.playhq.com, and setup-node
+# changes the runner's outbound fingerprint so CloudFront 403s every request,
+# session acquisition included. The runner's preinstalled Node is used instead.
+
+name: Probe Profile Teams
+
+on:
+  workflow_dispatch:
+    inputs:
+      players:
+        description: 'Player api uuids, comma separated (the ids in StatTrack player URLs, 36 chars each)'
+        required: true
+        type: string
+      tenant:
+        description: 'PlayHQ tenant'
+        required: false
+        default: 'basketball-victoria'
+        type: string
+      fixtures:
+        description: 'Also call discoverTeamFixture per returned team (needed for the verdict)'
+        required: false
+        default: true
+        type: boolean
+      delay_ms:
+        description: 'Delay between PlayHQ calls, milliseconds'
+        required: false
+        default: '400'
+        type: string
+
+concurrency:
+  group: fixture-watch-playhq
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    # 45 minutes: a refused bootstrap waits one full 15-minute penalty window and
+    # asks once more, so the session path alone can legitimately take ~30 minutes.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node version (preinstalled — setup-node is forbidden in this job)
+        run: node --version
+
+      - name: Probe
+        run: |
+          set -o pipefail
+          PLAYERS='${{ inputs.players }}'
+          TENANT='${{ inputs.tenant }}'
+          DELAY='${{ inputs.delay_ms }}'
+          FIXTURES='${{ inputs.fixtures }}'
+          if [ -z "$TENANT" ]; then TENANT='basketball-victoria'; fi
+          if [ -z "$DELAY" ]; then DELAY='400'; fi
+          ARGS="--players=$PLAYERS --tenant=$TENANT --delay=$DELAY"
+          if [ "$FIXTURES" != "true" ]; then ARGS="$ARGS --no-fixtures"; fi
+          echo "Running: node scripts/probe-profile-teams.js $ARGS"
+          node scripts/probe-profile-teams.js $ARGS
