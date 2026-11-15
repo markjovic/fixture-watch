@@ -1,0 +1,93 @@
+# .github/workflows/fixture-watch.yml
+#
+# ⚠️ NO actions/setup-node IN THIS JOB. It calls api.playhq.com, and setup-node
+# changes the runner's outbound fingerprint so CloudFront 403s every request,
+# session acquisition included. The runner's preinstalled Node is used instead.
+#
+# ⚠️ THE CRON FIRES EVERY HALF HOUR, ALL DAY. That is deliberate. GitHub cron is UTC
+# and cannot follow daylight saving, so the SCRIPT decides, in Australia/Melbourne
+# terms, whether the slot does work (scripts/lib/schedule-gate.cjs). An off-slot run
+# exits in a couple of seconds with one line in the log.
+#
+#   Melbourne local:  07:00–09:00 hourly · 09:00–20:00 every 30 min
+#                     20:00–22:00 hourly · 22:00–07:00 nothing
+#
+# ⚠️ EVERY INPUT IS READ THROUGH A FALLBACK. A `schedule` trigger receives NO inputs
+# at all — workflow_dispatch defaults do not apply to it — and an empty string reads
+# as false, or breaks a shell test. Resolve each one at its use site.
+
+name: Fixture Watch
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Do everything, write and commit nothing, print the alerts instead of sending them'
+        required: false
+        default: false
+        type: boolean
+      force:
+        description: 'Ignore the Melbourne-time slot gate and run now'
+        required: false
+        default: false
+        type: boolean
+      no_alerts:
+        description: 'Suppress Pushover entirely (state is still written)'
+        required: false
+        default: false
+        type: boolean
+      players:
+        description: 'Restrict this run to these uuids, comma separated. Blank = all in watch.json'
+        required: false
+        default: ''
+        type: string
+
+# One run at a time, ever. Two overlapping runs would both read the same state,
+# both diff against it, and the second push would overwrite the first.
+concurrency:
+  group: fixture-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    # 40 minutes: a refused bootstrap waits one full 15-minute penalty window and
+    # asks once more, and the push retry has its own budget on top.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the run commits and pushes, and merges whatever landed
+          # in the meantime.
+          fetch-depth: 0
+
+      - name: Node version (preinstalled — setup-node is forbidden in this job)
+        run: node --version
+
+      - name: Configure git
+        run: |
+          git config user.name  "fixture-watch[bot]"
+          git config user.email "fixture-watch@users.noreply.github.com"
+
+      - name: Watch
+        env:
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+        run: |
+          set -o pipefail
+          DRY='${{ inputs.dry_run }}'
+          FORCE='${{ inputs.force }}'
+          NOAL='${{ inputs.no_alerts }}'
+          PLAYERS='${{ inputs.players }}'
+          ARGS=""
+          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "$FORCE" = "true" ]; then ARGS="$ARGS --force"; fi
+          if [ "$NOAL" = "true" ]; then ARGS="$ARGS --no-alerts"; fi
+          if [ -n "$PLAYERS" ]; then ARGS="$ARGS --players=$PLAYERS"; fi
+          echo "Running: node scripts/fixture-watch.js $ARGS"
+          node scripts/fixture-watch.js $ARGS

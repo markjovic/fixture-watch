@@ -1,0 +1,71 @@
+# .github/workflows/keepalive.yml
+#
+# WHY THIS EXISTS, AND WHY IT IS A DELIBERATE COMMIT RATHER THAN NOTHING.
+#
+# GitHub disables scheduled workflows on a PUBLIC repository after 60 days without
+# repository activity. fixture-watch commits state only when a fixture actually
+# changes, so between seasons there can be months with no commit at all — and the
+# watcher would be silently switched off exactly when the next season's fixture is
+# published, which is the one moment it exists for.
+#
+# ⚠️ WHAT I COULD NOT VERIFY. It is widely held that commits pushed by a workflow
+# using GITHUB_TOKEN count as the activity that resets that 60-day clock. I could
+# not test that from here, and I am not willing to stake the whole purpose of the
+# repo on a belief about GitHub's internals. So this runs monthly and makes a commit
+# that is guaranteed to be real activity. If the bot commits do count, this is
+# harmless duplication — twelve commits a year. If they do not, this is the only
+# thing keeping the watcher alive through an off-season.
+#
+# ⚠️ NO actions/setup-node. It touches no PlayHQ endpoint, but the rule is per-job
+# and costs nothing to keep.
+
+name: Keep Alive
+
+on:
+  schedule:
+    # 1st of every month, 20:13 UTC. Deliberately not on the hour and deliberately
+    # not sharing a minute with fixture-watch's 7/37.
+    - cron: '13 20 1 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: fixture-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name  "fixture-watch[bot]"
+          git config user.email "fixture-watch@users.noreply.github.com"
+
+      - name: Touch and commit
+        run: |
+          set -o pipefail
+          mkdir -p state
+          printf '{\n  "_comment": "Monthly keep-alive. GitHub disables scheduled workflows on a public repo after 60 days without repository activity, and fixture-watch can legitimately go months without a state commit between seasons.",\n  "lastKeepAlive": "%s"\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > state/_keepalive.json
+          git add -- state/_keepalive.json
+          SHORT="$(git diff --staged --shortstat)"
+          if [ -z "$SHORT" ]; then echo "nothing changed — unexpected for a timestamp file"; exit 1; fi
+          echo "staging: $SHORT"
+          git commit -m "keep-alive $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            if git fetch origin main && git merge -X ours FETCH_HEAD --no-edit --no-stat -q && git push origin HEAD:main; then
+              echo "pushed (attempt $i)"; exit 0
+            fi
+            echo "push attempt $i failed"
+            git merge --abort || true
+            sleep $(( (RANDOM % 30) + 5 ))
+          done
+          echo "push failed after 5 attempts"
+          exit 1
