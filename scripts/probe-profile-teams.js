@@ -1,4 +1,11 @@
-// scripts/probe-profile-teams.js
+// scripts/probe-profile-teams.js   ·   v2 (CLUB SWEEP)
+//
+// ⚠️ v2 REPLACES the v1 file of the same name delivered earlier on 2026-11-15.
+// v1 could only answer the question if a registration for an unplayed season
+// already existed. Mark reported there are no upcoming seasons right now, so v2
+// adds the club sweep described below, which asks PlayHQ what seasons EXIST rather
+// than waiting for one to turn up on a profile. You can tell them apart in the log:
+// v2 prints "probe-profile-teams v2" in its banner and a CLUB SWEEP section.
 //
 // THE DECIDING TEST for fixture-watch, and nothing else.
 //
@@ -13,10 +20,22 @@
 //   become essential rather than a fallback.
 //
 // WHAT IT DOES
-//   One `publicProfileTeams` call per player. Then, for each team that comes back,
-//   one `discoverTeamFixture` call to count how many of that team's games have
-//   actually been played. A registration whose team has games scheduled and ZERO
-//   played is the proof that registration-time visibility exists.
+//   1. One `publicProfileTeams` call per player.
+//   2. For each team that comes back, one `discoverTeamFixture` call to count how
+//      many of that team's games have actually been played. A registration whose
+//      team has games scheduled and ZERO played is direct proof of
+//      registration-time visibility.
+//   3. CLUB SWEEP. For each organisation the player is registered at, one
+//      `discoverCompetitions(organisationID)` call — which returns every season that
+//      club has ever run, with startDate, endDate and status, INCLUDING seasons at
+//      status UPCOMING. Measured 2026-09-07: this works on a guest session and sees
+//      a season the moment the association creates it, before anybody has played.
+//
+//      That turns the question into a comparison that can be run TODAY: here are the
+//      seasons the club has, here are the seasons on the player's profile, and here
+//      is the difference. A season the club holds that the profile does not list is
+//      either "the player is not registered for it" or "registered and not visible"
+//      — and Mark knows which, for his own children, without needing a probe.
 //
 //   It prints the raw `publicProfileTeams` payload per player, unmerged and
 //   untouched, so the answer does not depend on this script's interpretation of it.
@@ -32,6 +51,7 @@
 //     · HEADERS_BASE, COOKIE_QUERIES, refreshSession, doFetch, isWafBlock,
 //       Q_PROFILE_TEAMS      → scripts/discover-seasons.js  (staged copy 2026-10-13)
 //     · Q_TEAM_FIXTURE       → scripts/discover-fixtures.js (staged copy 2026-10-13)
+//     · Q_ORG_COMPETITIONS   → scripts/discover-org-seasons.js (staged copy)
 //     · lib/playhq-session.cjs → copied as a whole file, unmodified
 //   The ONE adaptation to refreshSession: discover-seasons.js sets
 //   BOOTSTRAP_REFUSED_RETRIES to 0 when running as a matrix shard, because a shard
@@ -60,7 +80,7 @@
 //
 // USAGE (dispatched from the workflow; these are its arguments)
 //   node scripts/probe-profile-teams.js --players=<uuid>[,<uuid>...]
-//        [--tenant=basketball-victoria] [--no-fixtures] [--delay=400]
+//        [--tenant=basketball-victoria] [--no-fixtures] [--no-clubs] [--delay=400]
 
 'use strict';
 
@@ -78,6 +98,7 @@ const PLAYERS = (argOf('players', '') || '')
   .split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
 const TENANT      = argOf('tenant', 'basketball-victoria') || 'basketball-victoria';
 const DO_FIXTURES = !args.includes('--no-fixtures');
+const DO_CLUBS    = !args.includes('--no-clubs');
 const DELAY_MS    = (() => {
   const n = parseInt(argOf('delay', '400'), 10);
   return Number.isFinite(n) && n >= 0 ? n : 400;
@@ -299,6 +320,29 @@ const Q_TEAM_FIXTURE = {
 }`,
 };
 
+// Q_ORG_COMPETITIONS: scripts/discover-org-seasons.js — the top-down season route.
+// ⚠️ The reference's note "discoverOrganisation for BV: returns null for guest
+// sessions" is about a DIFFERENT query. discoverCompetitions works on a guest
+// session, and it returns seasons at status UPCOMING — which is the whole point
+// here: it sees a season before anybody has registered or played.
+const Q_ORG_COMPETITIONS = {
+  operationName: 'discoverCompetitions',
+  query: `query discoverCompetitions($organisationID: ID!) {
+  discoverCompetitions(organisationID: $organisationID) {
+    id
+    name
+    seasons(organisationID: $organisationID) {
+      id
+      name
+      startDate
+      endDate
+      status { name value }
+    }
+    organisation { id name }
+  }
+}`,
+};
+
 // ─── Typed calls ─────────────────────────────────────────────────────────────
 // Every outcome is named. "I could not ask" is never returned as "the answer is none".
 async function probeTeams(profileID) {
@@ -356,6 +400,34 @@ async function teamFixture(teamID) {
   return { kind: 'ok', team: data.discoverTeam || null, rounds: Array.isArray(data.discoverTeamFixture) ? data.discoverTeamFixture : [] };
 }
 
+async function orgCompetitions(organisationID) {
+  try { await ensureSession(); }
+  catch (err) { return { kind: 'no-session', err }; }
+
+  let status, json, rawText;
+  try {
+    ({ status, body: json, rawText } = await doFetch(API_URL, { ...Q_ORG_COMPETITIONS, variables: { organisationID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie }));
+  } catch (err) { return { kind: 'error', err }; }
+
+  if (status === 403) {
+    if (isWafBlock(rawText)) return { kind: 'blocked', detail: `CLOUDFRONT-BLOCK (${(rawText || '').length}b HTML)` };
+    return { kind: 'forbidden', detail: 'application 403' };
+  }
+  if (status === 429 || status === 503) return { kind: 'blocked', detail: `HTTP ${status} rate signal` };
+  if (status < 200 || status >= 300) return { kind: 'error', err: new Error(`HTTP ${status}`) };
+  if (!json) return { kind: 'error', err: new Error(`unparseable body: ${(rawText || '').slice(0, 120)}`) };
+  if (json.errors?.length) {
+    const msg = json.errors.map(e => e.message).join(' | ');
+    // "Organisation could not be found" is a real answer about a deleted org, not a
+    // failure to ask. It is still not "this club has no seasons".
+    return { kind: 'gql-error', detail: msg };
+  }
+
+  const comps = (json.data || json)?.discoverCompetitions;
+  if (comps == null) return { kind: 'null', detail: 'discoverCompetitions is NULL' };
+  return { kind: 'ok', comps: Array.isArray(comps) ? comps : [] };
+}
+
 // ─── Fixture summary ─────────────────────────────────────────────────────────
 // A game counts as PLAYED when PlayHQ says FINAL or a score is recorded. Those two
 // are counted separately as well, because they are different claims.
@@ -401,10 +473,11 @@ function summariseRounds(rounds) {
 (async () => {
   const started = Date.now();
   console.log('═'.repeat(78));
-  console.log('fixture-watch — probe-profile-teams');
+  console.log('fixture-watch — probe-profile-teams v2 (CLUB SWEEP)');
   console.log(`  tenant:   ${TENANT}`);
   console.log(`  players:  ${PLAYERS.length}`);
   console.log(`  fixtures: ${DO_FIXTURES ? 'yes (one discoverTeamFixture call per returned team)' : 'no (--no-fixtures)'}`);
+  console.log(`  clubs:    ${DO_CLUBS ? 'yes (one discoverCompetitions call per organisation seen)' : 'no (--no-clubs)'}`);
   console.log(`  delay:    ${DELAY_MS} ms between calls`);
   console.log('═'.repeat(78));
 
@@ -416,6 +489,11 @@ function summariseRounds(rounds) {
 
   const unanswered = [];
   const evidence   = [];   // registrations with games scheduled and none played
+  // For the club sweep: which seasons each player's profile lists, and which clubs
+  // they are registered at. Both are built ONLY from answered calls — a player whose
+  // profile could not be read contributes nothing and is never treated as "no seasons".
+  const profileSeasons = new Map();   // uuid -> Set(seasonId)
+  const clubs          = new Map();   // orgId -> { name, players:Set(uuid) }
 
   for (let i = 0; i < PLAYERS.length; i++) {
     const uuid = PLAYERS[i];
@@ -442,8 +520,19 @@ function summariseRounds(rounds) {
       continue;
     }
 
+    profileSeasons.set(uuid, new Set());
+
     for (const t of r.teams) {
       const s = t.season || {};
+      if (s.id) profileSeasons.get(uuid).add(s.id);
+      // The club the TEAM belongs to, which is the one that runs the registration.
+      // The competition's organisation is the association (EDJBA and the like) and
+      // is collected too — a new season is created by the association, not the club.
+      for (const o of [t.organisation, s.competition?.organisation]) {
+        if (!o?.id) continue;
+        if (!clubs.has(o.id)) clubs.set(o.id, { name: o.name || '', players: new Set() });
+        clubs.get(o.id).players.add(uuid);
+      }
       console.log(`\n  ── registration ──`);
       console.log(`     team:        ${t.id}  ${t.name || ''}`);
       console.log(`     club:        ${t.organisation?.id || '—'}  ${t.organisation?.name || ''}`);
@@ -483,6 +572,68 @@ function summariseRounds(rounds) {
     }
   }
 
+  // ─── Club sweep ────────────────────────────────────────────────────────────
+  // What seasons do these clubs and associations actually have, and which of them
+  // are missing from the players' profiles?
+  const missingFromProfiles = [];   // seasons a club holds that no probed profile lists
+  const futureSeasons       = [];   // seasons at UPCOMING, or starting after today
+  // ⚠️ A CLUB THAT COULD NOT BE ASKED IS NOT A CLUB WITH NO SEASONS. Without this
+  // counter the "no future season exists" verdict prints after a run in which every
+  // discoverCompetitions call was refused — a failure to ask recorded as an answer,
+  // which is the fault class this project has been bitten by four times.
+  let clubsAsked = 0, clubsUnanswered = 0;
+
+  if (DO_CLUBS && clubs.size && !sessionDead) {
+    console.log(`\n${'═'.repeat(78)}`);
+    console.log(`CLUB SWEEP — discoverCompetitions on ${clubs.size} organisation(s)`);
+    console.log('═'.repeat(78));
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const [orgId, club] of clubs) {
+      console.log(`\n  ── ${orgId}  ${club.name} ──`);
+      const c = await orgCompetitions(orgId);
+      await sleep(DELAY_MS);
+
+      if (c.kind !== 'ok') {
+        const why = c.detail || c.err?.message || '';
+        console.log(`     ✖ NOT ANSWERED — ${c.kind}${why ? `: ${why}` : ''}`);
+        unanswered.push({ uuid: `org ${orgId}`, kind: c.kind, why });
+        clubsUnanswered++;
+        if (c.kind === 'no-session') { clubsUnanswered += clubs.size - clubsAsked - clubsUnanswered; break; }
+        continue;
+      }
+      clubsAsked++;
+
+      if (!c.comps.length) { console.log('     (no competitions returned — a real answer, not a failure)'); continue; }
+
+      for (const comp of c.comps) {
+        console.log(`     competition ${comp.id}  ${comp.name || ''}`);
+        const seasons = Array.isArray(comp.seasons) ? comp.seasons : [];
+        if (!seasons.length) { console.log('       (no seasons)'); continue; }
+        // Newest first, by startDate — a missing startDate sorts last rather than
+        // being dropped, because absence is not a date.
+        const sorted = [...seasons].sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+        for (const s of sorted) {
+          const st = s.status?.value || '—';
+          const starts = s.startDate || null;
+          const isFuture = st === 'UPCOMING' || (starts && starts > today);
+          const listedBy = [...club.players].filter(u => profileSeasons.get(u)?.has(s.id));
+          const probedHere = [...club.players].filter(u => profileSeasons.has(u));
+          const mark = isFuture ? '★ FUTURE' : '        ';
+          console.log(`       ${mark} ${s.id}  ${s.name || ''}  [${st}]  ${starts || 'no startDate'} → ${s.endDate || 'NO endDate'}`);
+          console.log(`                 on profile of: ${listedBy.length ? listedBy.join(', ') : 'NONE of the probed players'}`);
+          if (isFuture) {
+            futureSeasons.push({ orgId, orgName: club.name, comp: comp.name, season: s, listedBy, probedHere });
+            if (!listedBy.length) missingFromProfiles.push({ orgId, orgName: club.name, comp: comp.name, season: s, probedHere });
+          }
+        }
+      }
+    }
+  } else if (DO_CLUBS && !clubs.size) {
+    console.log('\n  (Club sweep skipped — no organisation ids came back from any profile.)');
+  }
+
   // ─── Verdict ───────────────────────────────────────────────────────────────
   console.log(`\n${'═'.repeat(78)}`);
   console.log('VERDICT');
@@ -497,12 +648,51 @@ function summariseRounds(rounds) {
     console.log('    pinned team ids stay as a fallback rather than a requirement.');
   } else {
     console.log('\n  No registration was seen for a team with zero games played.');
-    console.log('  That is NOT yet proof of the opposite: it only proves that none of the players');
-    console.log('  probed had an unplayed registration at this moment. Re-run with a player who is');
-    console.log('  registered for an upcoming season and has not played a game in it. If such a');
-    console.log('  player returns the registration, the answer is registration-time visibility;');
-    console.log('  if their profile omits it, following by player cannot see a new season before');
-    console.log('  round 1 and pinned team ids become essential.');
+    console.log('  That alone is NOT proof of the opposite: it only proves that none of the players');
+    console.log('  probed had an unplayed registration at this moment. See the club sweep below.');
+  }
+
+  // ─── What the club sweep settles ───────────────────────────────────────────
+  if (DO_CLUBS) {
+    console.log('\n  ── club sweep ──');
+    if (!futureSeasons.length && clubsUnanswered) {
+      console.log(`\n  ✖ NO CONCLUSION. ${clubsUnanswered} of ${clubsAsked + clubsUnanswered} organisation(s) could not be asked,`);
+      console.log('  and the ones that answered held no future season. "Not asked" is not "nothing');
+      console.log('  there", so this run says nothing about whether a next season exists. Fix the');
+      console.log('  cause listed above and run it again.');
+    } else if (!futureSeasons.length) {
+      console.log(`\n  All ${clubsAsked} organisation(s) answered. None returned a season at status UPCOMING or with a future`);
+      console.log('  startDate. So PlayHQ itself is not holding a next season yet, which matches');
+      console.log('  Mark\'s reading that there are none to look at. The question CANNOT be settled');
+      console.log('  today by any route — there is nothing in existence to test against. Re-run this');
+      console.log('  probe when a club publishes a new season; it will answer on that run.');
+      console.log('\n  → Build the watcher so it does not depend on the answer: follow by player, accept');
+      console.log('    pinned team ids as a first-class input rather than a fallback, and watch the');
+      console.log('    clubs themselves with this same discoverCompetitions call so a new season is');
+      console.log('    seen when the ASSOCIATION creates it rather than when a profile catches up.');
+    } else {
+      console.log(`\n  ${futureSeasons.length} season(s) at UPCOMING or with a future startDate exist at these clubs:\n`);
+      for (const f of futureSeasons) {
+        console.log(`    ${f.season.id}  ${f.season.name || ''}  [${f.season.status?.value || '—'}]  starts ${f.season.startDate || '—'}`);
+        console.log(`      ${f.orgName} / ${f.comp || ''}`);
+        console.log(`      listed on profile of: ${f.listedBy.length ? f.listedBy.join(', ') : 'NONE'}`);
+      }
+      if (missingFromProfiles.length) {
+        console.log('\n  ⚠ READ THIS — IT IS THE ANSWER, BUT ONLY YOU CAN FINISH IT.');
+        console.log('    The season(s) above marked "listed on profile of: NONE" exist at the club and');
+        console.log('    do NOT appear on any probed player\'s publicProfileTeams.');
+        console.log('    If a probed player IS already registered for one of them, then a registration');
+        console.log('    is NOT visible before the first game: following by player would find the');
+        console.log('    fixture only after round 1, and PINNED TEAM IDS ARE ESSENTIAL.');
+        console.log('    If none of them is registered yet, this proves nothing either way — the');
+        console.log('    profile is correct to omit a registration that does not exist.');
+        console.log('    This script cannot know which. You can.');
+      } else {
+        console.log('\n  Every future season at these clubs is already listed on a probed player\'s profile.');
+        console.log('  → A registration is visible before the season starts. Following by PLAYER is');
+        console.log('    sufficient; pinned team ids stay as a fallback rather than a requirement.');
+      }
+    }
   }
 
   if (unanswered.length) {
