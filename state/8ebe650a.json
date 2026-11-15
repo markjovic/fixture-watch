@@ -1,0 +1,415 @@
+{
+  "tid": "8ebe650a",
+  "reg": {
+    "tid": "8ebe650a",
+    "name": "Coyotes",
+    "club": "Kilsyth Basketball",
+    "sid": "96c25259",
+    "seasonName": "Spring 2026",
+    "seasonStatus": "ACTIVE",
+    "endDate": "2026-12-11",
+    "comp": "After School",
+    "assoc": "Kilsyth Basketball",
+    "currentGid": "6676abfd",
+    "currentGrade": "Monday Boys Grade 6"
+  },
+  "players": [
+    "0afc7690-c2db-4644-b039-af1c34520af3"
+  ],
+  "games": {
+    "e34068fb": {
+      "d": "2026-07-13",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "GSLPS Lions (B6)",
+      "oppId": "19dcf329",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 1",
+      "finals": false
+    },
+    "fab2d155": {
+      "d": "2026-07-20",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 2",
+      "opp": "The Jelly Beans",
+      "oppId": "f6ef4b4c",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 2",
+      "finals": false
+    },
+    "5870b6d0": {
+      "d": "2026-07-27",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "Yarra Road Hooperz",
+      "oppId": "555b9790",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 3",
+      "finals": false
+    },
+    "06ba6083": {
+      "d": "2026-08-03",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "MEPS Chargers (Gr 6)",
+      "oppId": "a1f8e301",
+      "home": true,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 4",
+      "finals": false
+    },
+    "2d24e9e2": {
+      "d": "2026-08-10",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 5",
+      "opp": "GSLPS Lions (B6)",
+      "oppId": "19dcf329",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 5",
+      "finals": false
+    },
+    "6b9d2177": {
+      "d": "2026-08-17",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 2",
+      "opp": "MEPS Mavericks (Gr 6)",
+      "oppId": "cd1465e3",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 6",
+      "finals": false
+    },
+    "218fc26f": {
+      "d": "2026-08-24",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 2",
+      "opp": "The Jelly Beans",
+      "oppId": "f6ef4b4c",
+      "home": true,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 7",
+      "finals": false
+    },
+    "cc84a634": {
+      "d": "2026-08-31",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "Yarra Road Hooperz",
+      "oppId": "555b9790",
+      "home": true,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 8",
+      "finals": false
+    },
+    "bf6a23b3": {
+      "d": "2026-09-07",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "MEPS Chargers (Gr 6)",
+      "oppId": "a1f8e301",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 9",
+      "finals": false
+    },
+    "314664a1": {
+      "d": "2026-09-14",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 5",
+      "opp": "GSLPS Lions (B6)",
+      "oppId": "19dcf329",
+      "home": true,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 10",
+      "finals": false
+    },
+    "b604d7cd": {
+      "d": "2026-10-05",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 2",
+      "opp": "MEPS Mavericks (Gr 6)",
+      "oppId": "cd1465e3",
+      "home": true,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 11",
+      "finals": false
+    },
+    "3e6d29f6": {
+      "d": "2026-10-12",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 2",
+      "opp": "The Jelly Beans",
+      "oppId": "f6ef4b4c",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 12",
+      "finals": false
+    },
+    "3e44caea": {
+      "d": "2026-10-19",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "Yarra Road Hooperz",
+      "oppId": "555b9790",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 13",
+      "finals": false
+    },
+    "f5a6289e": {
+      "d": "2026-10-26",
+      "t": "18:10",
+      "v": "Lilydale Stadium",
+      "c": "Court 1",
+      "opp": "MEPS Chargers (Gr 6)",
+      "oppId": "a1f8e301",
+      "home": true,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 14",
+      "finals": false
+    },
+    "bc86e2ca": {
+      "d": "2026-11-09",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 6",
+      "opp": "GSLPS Lions (B6)",
+      "oppId": "19dcf329",
+      "home": false,
+      "st": "FINAL",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 15",
+      "finals": false
+    },
+    "dbc91cc0": {
+      "d": "2026-11-16",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 6",
+      "opp": "MEPS Mavericks (Gr 6)",
+      "oppId": "cd1465e3",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 16",
+      "finals": false
+    },
+    "e463161a": {
+      "d": "2026-11-23",
+      "t": "18:10",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 2",
+      "opp": "The Jelly Beans",
+      "oppId": "f6ef4b4c",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "6676abfd",
+      "gn": "Monday Boys Grade 6",
+      "rn": "Round 17",
+      "finals": false
+    }
+  },
+  "rounds": {
+    "gid": "6676abfd",
+    "fetchedAt": "2026-11-15T09:15:41.472Z",
+    "list": [
+      {
+        "id": "83a6745f",
+        "name": "Round 1",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "b8b864ee",
+        "name": "Round 2",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "2addc0b3",
+        "name": "Round 3",
+        "number": 3,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "fa875735",
+        "name": "Round 4",
+        "number": 4,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "29cbb085",
+        "name": "Round 5",
+        "number": 5,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "1693602f",
+        "name": "Round 6",
+        "number": 6,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "191dafca",
+        "name": "Round 7",
+        "number": 7,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "6c06099a",
+        "name": "Round 8",
+        "number": 8,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "aa60b023",
+        "name": "Round 9",
+        "number": 9,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "535d755e",
+        "name": "Round 10",
+        "number": 10,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "60dd6d8d",
+        "name": "Round 11",
+        "number": 11,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "68d6682c",
+        "name": "Round 12",
+        "number": 12,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "3f814fde",
+        "name": "Round 13",
+        "number": 13,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "f6523b7b",
+        "name": "Round 14",
+        "number": 14,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "96b09786",
+        "name": "Round 15",
+        "number": 15,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "a7aa7ea7",
+        "name": "Round 16",
+        "number": 16,
+        "current": true,
+        "isFinalsRound": false
+      },
+      {
+        "id": "7fe0b683",
+        "name": "Round 17",
+        "number": 17,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "0e17546c",
+        "name": "Semi Finals",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": true
+      },
+      {
+        "id": "85241331",
+        "name": "Grand Final",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": true
+      }
+    ]
+  },
+  "coverage": {
+    "gid": "6676abfd",
+    "roundsInGrade": 19,
+    "fromRound": 16,
+    "currentRoundName": "Round 16",
+    "nonFinalsRoundsInGrade": 17,
+    "nonFinalsRounds": 2,
+    "covered": 2,
+    "complete": true,
+    "missing": [],
+    "finalsRoundsInGrade": 2,
+    "lastGameDate": "2026-11-23",
+    "checkedAt": "2026-11-15T09:15:41.472Z"
+  },
+  "firstSeenAt": "2026-11-15T09:15:41.590Z",
+  "lastChangeAt": "2026-11-15T09:15:41.590Z",
+  "lastCheckedAt": "2026-11-15T09:15:41.590Z"
+}

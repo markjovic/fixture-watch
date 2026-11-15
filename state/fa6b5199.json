@@ -1,0 +1,352 @@
+{
+  "tid": "fa6b5199",
+  "reg": {
+    "tid": "fa6b5199",
+    "name": "U13 MMB08",
+    "club": "Maroondah Magic Basketball Club",
+    "sid": "5e26f10f",
+    "seasonName": "Summer 2026/27",
+    "seasonStatus": "ACTIVE",
+    "endDate": "2027-03-24",
+    "comp": "Junior Domestic",
+    "assoc": "Kilsyth Basketball",
+    "currentGid": "ed7c738b",
+    "currentGrade": "Saturday U13 Boys B"
+  },
+  "players": [
+    "0afc7690-c2db-4644-b039-af1c34520af3"
+  ],
+  "games": {
+    "cccdcf7b": {
+      "d": "2026-10-10",
+      "t": "14:40",
+      "v": "Lilydale Stadium",
+      "c": "Court 3",
+      "opp": "Vikings U13 B03",
+      "oppId": "55fac254",
+      "home": false,
+      "st": "FINAL",
+      "gid": "be2a951e",
+      "gn": "Saturday U13 Boys BRES",
+      "rn": "Round 1",
+      "finals": false
+    },
+    "0f5aeaa7": {
+      "d": "2026-10-17",
+      "t": "14:40",
+      "v": "Lilydale Stadium",
+      "c": "Court 4",
+      "opp": "Meteors U13 B02",
+      "oppId": "c6ce908f",
+      "home": true,
+      "st": "FINAL",
+      "gid": "be2a951e",
+      "gn": "Saturday U13 Boys BRES",
+      "rn": "Round 2",
+      "finals": false
+    },
+    "6ef5e8fa": {
+      "d": "2026-10-24",
+      "t": "14:40",
+      "v": "Lilydale Stadium",
+      "c": "Court 4",
+      "opp": "U13 MMB07",
+      "oppId": "782b3320",
+      "home": true,
+      "st": "FINAL",
+      "gid": "be2a951e",
+      "gn": "Saturday U13 Boys BRES",
+      "rn": "Round 3",
+      "finals": false
+    },
+    "2f44bac4": {
+      "d": "2026-11-07",
+      "t": "13:50",
+      "v": "Melba Secondary College",
+      "c": "Court 4",
+      "opp": "SEBC Saints U13 B04",
+      "oppId": "1e0aa4d2",
+      "home": false,
+      "st": "FINAL",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 4",
+      "finals": false
+    },
+    "53fb2a3d": {
+      "d": "2026-11-14",
+      "t": "13:50",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 7",
+      "opp": "U13 MMB05",
+      "oppId": "e904a478",
+      "home": true,
+      "st": "FINAL",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 5",
+      "finals": false
+    },
+    "f0fd42cd": {
+      "d": "2026-11-21",
+      "t": "14:40",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 6",
+      "opp": "U13 MMB04",
+      "oppId": "22355b01",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 6",
+      "finals": false
+    },
+    "a6c62a08": {
+      "d": "2026-11-28",
+      "t": "13:00",
+      "v": "Oxley Stadium",
+      "c": "Court 3",
+      "opp": "U13 MMB06",
+      "oppId": "0f35b751",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 7",
+      "finals": false
+    },
+    "a00ca4cf": {
+      "d": "2026-12-05",
+      "t": "14:40",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 6",
+      "opp": "U13 MMB07",
+      "oppId": "782b3320",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 8",
+      "finals": false
+    },
+    "6902c140": {
+      "d": "2026-12-12",
+      "t": "13:50",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 7",
+      "opp": "SCYC U13 B02",
+      "oppId": "f5e1b22a",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 9",
+      "finals": false
+    },
+    "97822f3a": {
+      "d": "2027-01-30",
+      "t": "13:50",
+      "v": "Melba Secondary College",
+      "c": "Court 4",
+      "opp": "MLBC U13 B03",
+      "oppId": "39c63a49",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 10",
+      "finals": false
+    },
+    "32adc282": {
+      "d": "2027-02-06",
+      "t": "13:50",
+      "v": "Melba Secondary College",
+      "c": "Court 4",
+      "opp": "SEBC Saints U13 B04",
+      "oppId": "1e0aa4d2",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 11",
+      "finals": false
+    },
+    "3c8dd9fd": {
+      "d": "2027-02-13",
+      "t": "13:50",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 7",
+      "opp": "U13 MMB05",
+      "oppId": "e904a478",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 12",
+      "finals": false
+    },
+    "4ebfc32c": {
+      "d": "2027-02-20",
+      "t": "14:40",
+      "v": "Kilsyth Basketball Stadium",
+      "c": "Court 6",
+      "opp": "U13 MMB04",
+      "oppId": "22355b01",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 13",
+      "finals": false
+    },
+    "594c4e07": {
+      "d": "2027-02-27",
+      "t": "13:00",
+      "v": "Oxley Stadium",
+      "c": "Court 3",
+      "opp": "U13 MMB06",
+      "oppId": "0f35b751",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "ed7c738b",
+      "gn": "Saturday U13 Boys B",
+      "rn": "Round 14",
+      "finals": false
+    }
+  },
+  "rounds": {
+    "gid": "ed7c738b",
+    "fetchedAt": "2026-11-15T09:15:46.433Z",
+    "list": [
+      {
+        "id": "8d5a9649",
+        "name": "Round 1",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "4fee902a",
+        "name": "Round 2",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "71fb51d2",
+        "name": "Round 3",
+        "number": 3,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "2daa6a3e",
+        "name": "Round 4",
+        "number": 4,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "e3c804e6",
+        "name": "Round 5",
+        "number": 5,
+        "current": true,
+        "isFinalsRound": false
+      },
+      {
+        "id": "e0acf938",
+        "name": "Round 6",
+        "number": 6,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "631e0d1b",
+        "name": "Round 7",
+        "number": 7,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "9fd4b403",
+        "name": "Round 8",
+        "number": 8,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "34505736",
+        "name": "Round 9",
+        "number": 9,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "6d15bee1",
+        "name": "Round 10",
+        "number": 10,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "58f0d534",
+        "name": "Round 11",
+        "number": 11,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "b596e795",
+        "name": "Round 12",
+        "number": 12,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "2b5cf06e",
+        "name": "Round 13",
+        "number": 13,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "5a4b6157",
+        "name": "Round 14",
+        "number": 14,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "b5036363",
+        "name": "Semi Finals",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": true
+      },
+      {
+        "id": "95e991ac",
+        "name": "Grand Final",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": true
+      }
+    ]
+  },
+  "coverage": {
+    "gid": "ed7c738b",
+    "roundsInGrade": 16,
+    "fromRound": 5,
+    "currentRoundName": "Round 5",
+    "nonFinalsRoundsInGrade": 14,
+    "nonFinalsRounds": 10,
+    "covered": 10,
+    "complete": true,
+    "missing": [],
+    "finalsRoundsInGrade": 2,
+    "lastGameDate": "2027-02-27",
+    "checkedAt": "2026-11-15T09:15:46.433Z"
+  },
+  "firstSeenAt": "2026-11-15T09:15:46.433Z",
+  "lastChangeAt": "2026-11-15T09:15:46.433Z",
+  "lastCheckedAt": "2026-11-15T09:15:46.433Z"
+}

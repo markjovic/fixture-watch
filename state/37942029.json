@@ -1,0 +1,244 @@
+{
+  "tid": "37942029",
+  "reg": {
+    "tid": "37942029",
+    "name": "B13 Spirit Magic 3 (CR)",
+    "club": "Spirit Magic Basketball Club",
+    "sid": "7f7c13f5",
+    "seasonName": "Summer 2026/27",
+    "seasonStatus": "ACTIVE",
+    "endDate": "2027-03-20",
+    "comp": "Junior Domestic - Saturday Competition (GEBC)",
+    "assoc": "Melbourne East Basketball Association (MEBA)",
+    "currentGid": "c11d7661",
+    "currentGrade": "Saturday U13 Boys D"
+  },
+  "players": [
+    "0afc7690-c2db-4644-b039-af1c34520af3"
+  ],
+  "games": {
+    "03ae40ad": {
+      "d": "2026-10-10",
+      "t": "11:45",
+      "v": "THE SUMMIT SPORTS COMPLEX (Forest Hill Chase).",
+      "c": "Court 2",
+      "opp": "B13 Nunawading Kangas 7",
+      "oppId": "8ffc0da3",
+      "home": false,
+      "st": "FINAL",
+      "gid": "26b60ee4",
+      "gn": "Saturday U13 Boys DR",
+      "rn": "Round 1",
+      "finals": false
+    },
+    "4d92af2e": {
+      "d": "2026-10-17",
+      "t": "11:00",
+      "v": "The Rings (Ringwood)",
+      "c": "Court 2",
+      "opp": "B13 Waverley 10",
+      "oppId": "2af0761d",
+      "home": true,
+      "st": "FINAL",
+      "gid": "26b60ee4",
+      "gn": "Saturday U13 Boys DR",
+      "rn": "Round 2",
+      "finals": false
+    },
+    "fb1d1407": {
+      "d": "2026-10-24",
+      "t": "11:00",
+      "v": "The Rings (Ringwood)",
+      "c": "Court 2",
+      "opp": "B13 Eastern Bulls 1",
+      "oppId": "3d56d94b",
+      "home": true,
+      "st": "FINAL",
+      "gid": "26b60ee4",
+      "gn": "Saturday U13 Boys DR",
+      "rn": "Round 3",
+      "finals": false
+    },
+    "809565eb": {
+      "d": "2026-11-07",
+      "t": "11:00",
+      "v": "THE SUMMIT SPORTS COMPLEX (Forest Hill Chase).",
+      "c": "Court 1",
+      "opp": "B13 Waverley 11",
+      "oppId": "9eca589c",
+      "home": false,
+      "st": "FINAL",
+      "gid": "26b60ee4",
+      "gn": "Saturday U13 Boys DR",
+      "rn": "Round 4",
+      "finals": false
+    },
+    "d555f930": {
+      "d": "2026-11-14",
+      "t": "09:30",
+      "v": "Wantirna College",
+      "c": "Court 2",
+      "opp": "B13 Waverley 9",
+      "oppId": "708b5332",
+      "home": false,
+      "st": "FINAL",
+      "gid": "c11d7661",
+      "gn": "Saturday U13 Boys D",
+      "rn": "Round 5",
+      "finals": false
+    }
+  },
+  "rounds": {
+    "gid": "c11d7661",
+    "fetchedAt": "2026-11-15T09:15:39.234Z",
+    "list": [
+      {
+        "id": "3548eb51",
+        "name": "Round 1",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "b614f0f8",
+        "name": "Round 2",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "fd270296",
+        "name": "Round 3",
+        "number": 3,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "5fd5c3b9",
+        "name": "Round 4",
+        "number": 4,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "6ad16716",
+        "name": "Round 5",
+        "number": 5,
+        "current": true,
+        "isFinalsRound": false
+      },
+      {
+        "id": "471585bf",
+        "name": "Round 6",
+        "number": 6,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "5d5703f1",
+        "name": "Round 7",
+        "number": 7,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "2abc49cb",
+        "name": "Round 8",
+        "number": 8,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "88c8bd19",
+        "name": "Round 9",
+        "number": 9,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "2fa1c9b0",
+        "name": "Round 10",
+        "number": 10,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "cf89b91b",
+        "name": "Round 11",
+        "number": 11,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "a5307458",
+        "name": "Round 12",
+        "number": 12,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "b0fdf912",
+        "name": "Round 13",
+        "number": 13,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "4247b885",
+        "name": "Round 14",
+        "number": 14,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "595b3e0e",
+        "name": "Round 15",
+        "number": 15,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "ddf99eef",
+        "name": "Semi Finals",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": true
+      },
+      {
+        "id": "982f9e21",
+        "name": "Grand Final",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": true
+      }
+    ]
+  },
+  "coverage": {
+    "gid": "c11d7661",
+    "roundsInGrade": 17,
+    "fromRound": 5,
+    "currentRoundName": "Round 5",
+    "nonFinalsRoundsInGrade": 15,
+    "nonFinalsRounds": 11,
+    "covered": 1,
+    "complete": false,
+    "missing": [
+      "Round 6",
+      "Round 7",
+      "Round 8",
+      "Round 9",
+      "Round 10",
+      "Round 11",
+      "Round 12",
+      "Round 13",
+      "Round 14",
+      "Round 15"
+    ],
+    "finalsRoundsInGrade": 2,
+    "lastGameDate": "2026-11-14",
+    "checkedAt": "2026-11-15T09:15:39.261Z"
+  },
+  "firstSeenAt": "2026-11-15T09:15:39.262Z",
+  "lastChangeAt": "2026-11-15T09:15:39.262Z",
+  "lastCheckedAt": "2026-11-15T09:15:39.262Z"
+}

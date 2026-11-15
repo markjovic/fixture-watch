@@ -1,0 +1,278 @@
+{
+  "tid": "cd0814a3",
+  "reg": {
+    "tid": "cd0814a3",
+    "name": "B13 Spirit Magic 1",
+    "club": "Spirit Magic Basketball Club",
+    "sid": "3d25b666",
+    "seasonName": "Summer 2026/27",
+    "seasonStatus": "ACTIVE",
+    "endDate": "2027-03-22",
+    "comp": "Junior Domestic - Monday - Friday Competition (MEBA)",
+    "assoc": "Melbourne East Basketball Association (MEBA)",
+    "currentGid": "7d0c2383",
+    "currentGrade": "Friday U13 Boys A"
+  },
+  "players": [
+    "0afc7690-c2db-4644-b039-af1c34520af3"
+  ],
+  "games": {
+    "65127762": {
+      "d": "2026-10-16",
+      "t": "18:00",
+      "v": "Knox School",
+      "c": "Court 1",
+      "opp": "B13 Blackburn Vikings 1",
+      "oppId": "187febe7",
+      "home": false,
+      "st": "FINAL",
+      "gid": "81ef26d5",
+      "gn": "Friday U13 Boys AR",
+      "rn": "Round 2",
+      "finals": false
+    },
+    "172b8b8b": {
+      "d": "2026-10-09",
+      "t": "19:15",
+      "v": "Mullauna College",
+      "c": "Court 2",
+      "opp": "B13 Nunawading Kangas 2",
+      "oppId": "a68a8362",
+      "home": true,
+      "st": "FINAL",
+      "gid": "81ef26d5",
+      "gn": "Friday U13 Boys AR",
+      "rn": "Round 1",
+      "finals": false
+    },
+    "f73ed16b": {
+      "d": "2026-10-23",
+      "t": "17:00",
+      "v": "Nunawading Basketball Centre",
+      "c": "Court 1",
+      "opp": "B13 Wattle Park Saints 1",
+      "oppId": "95f1d8cf",
+      "home": true,
+      "st": "FINAL",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 3",
+      "finals": false
+    },
+    "16a70e19": {
+      "d": "2026-10-30",
+      "t": "18:30",
+      "v": "Forest Hill Secondary College",
+      "c": "Court 2",
+      "opp": "B13 Vermont Vultures 1",
+      "oppId": "2aa16d40",
+      "home": false,
+      "st": "FINAL",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 4",
+      "finals": false
+    },
+    "319588a9": {
+      "d": "2026-11-06",
+      "t": "17:45",
+      "v": "THE SUMMIT SPORTS COMPLEX (Forest Hill Chase).",
+      "c": "Court 1",
+      "opp": "B13 Heathmont Hornets 1",
+      "oppId": "3fb096b6",
+      "home": false,
+      "st": "FINAL",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 5",
+      "finals": false
+    },
+    "8ce01999": {
+      "d": "2026-11-13",
+      "t": "18:30",
+      "v": "Forest Hill Secondary College",
+      "c": "Court 2",
+      "opp": "B13 Wantirna South Devils 1",
+      "oppId": "79748f95",
+      "home": false,
+      "st": "FINAL",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 6",
+      "finals": false
+    },
+    "76b04de5": {
+      "d": "2026-11-20",
+      "t": "17:45",
+      "v": "Wesley College - Glen Waverley campus",
+      "c": "Court 1",
+      "opp": "B13 E.Bees 2",
+      "oppId": "f787a60a",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 7",
+      "finals": false
+    }
+  },
+  "rounds": {
+    "gid": "7d0c2383",
+    "fetchedAt": "2026-11-15T09:15:43.992Z",
+    "list": [
+      {
+        "id": "0a59f82d",
+        "name": "Round 1",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "084d3979",
+        "name": "Round 2",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "a5085589",
+        "name": "Round 3",
+        "number": 3,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "19f990b8",
+        "name": "Round 4",
+        "number": 4,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "f12b9dcf",
+        "name": "Round 5",
+        "number": 5,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "40c1e55d",
+        "name": "Round 6",
+        "number": 6,
+        "current": true,
+        "isFinalsRound": false
+      },
+      {
+        "id": "b18dbb33",
+        "name": "Round 7",
+        "number": 7,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "f64ffba4",
+        "name": "Round 8",
+        "number": 8,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "7e56ef24",
+        "name": "Round 9",
+        "number": 9,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "504c01d7",
+        "name": "Round 10",
+        "number": 10,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "6e146706",
+        "name": "Round 11",
+        "number": 11,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "43c23bac",
+        "name": "Round 12",
+        "number": 12,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "78be6736",
+        "name": "Round 13",
+        "number": 13,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "30be8f63",
+        "name": "Round 14",
+        "number": 14,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "6b412a51",
+        "name": "Round 15",
+        "number": 15,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "5cfe12a3",
+        "name": "Round 16",
+        "number": 16,
+        "current": false,
+        "isFinalsRound": false
+      },
+      {
+        "id": "c674a6aa",
+        "name": "Semi Finals",
+        "number": 1,
+        "current": false,
+        "isFinalsRound": true
+      },
+      {
+        "id": "f46fe56c",
+        "name": "Grand Final",
+        "number": 2,
+        "current": false,
+        "isFinalsRound": true
+      }
+    ]
+  },
+  "coverage": {
+    "gid": "7d0c2383",
+    "roundsInGrade": 18,
+    "fromRound": 6,
+    "currentRoundName": "Round 6",
+    "nonFinalsRoundsInGrade": 16,
+    "nonFinalsRounds": 11,
+    "covered": 2,
+    "complete": false,
+    "missing": [
+      "Round 8",
+      "Round 9",
+      "Round 10",
+      "Round 11",
+      "Round 12",
+      "Round 13",
+      "Round 14",
+      "Round 15",
+      "Round 16"
+    ],
+    "finalsRoundsInGrade": 2,
+    "lastGameDate": "2026-11-20",
+    "checkedAt": "2026-11-15T09:15:43.992Z"
+  },
+  "firstSeenAt": "2026-11-15T09:15:43.992Z",
+  "lastChangeAt": "2026-11-15T09:15:43.992Z",
+  "lastCheckedAt": "2026-11-15T09:15:43.992Z"
+}
