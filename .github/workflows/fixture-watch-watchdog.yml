@@ -1,0 +1,81 @@
+# .github/workflows/fixture-watch-watchdog.yml
+#
+# THE BACKSTOP. The daemon in fixture-watch.yml keeps the real cadence; this exists
+# for the day GitHub drops the one daily fire that starts it.
+#
+# It runs on the old half-hourly cron, which GitHub mostly ignores — and that is the
+# point. Whenever a fire IS delivered, this checks whether a daemon is running and,
+# if not, performs ONE check directly. So the worst case degrades to today's
+# behaviour (a couple of checks a day) instead of to nothing at all.
+#
+# ⚠️ IT DOES NOT DISPATCH THE DAEMON. A workflow_dispatch made with GITHUB_TOKEN
+# does not create a new workflow run — GitHub blocks that to prevent recursion — so
+# starting the daemon from here would need a personal access token. Doing the one
+# check inline needs no token, has no chain to break, and is the same proven script.
+#
+# ⚠️ NO `concurrency` GROUP, and the daemon has none either. A shared group would
+# make this QUEUE behind a five-hour leg rather than stand down, and a queued run
+# can be evicted by the next arrival. The in-progress check below is the interlock.
+# If the check and a daemon pass ever did overlap, the watcher is idempotent and its
+# push retries with `merge -X ours`, so the cost is a wasted pass, not bad data.
+#
+# ⚠️ NO actions/setup-node. It calls api.playhq.com.
+
+name: Fixture Watch Watchdog
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read          # to see whether a daemon run is in progress
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stand down if the daemon is already running
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          ACTIVE=$(gh run list --workflow=fixture-watch.yml --limit=30 \
+                     --json status \
+                     --jq '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="waiting")] | length')
+          echo "daemon runs active: $ACTIVE"
+          if [ "$ACTIVE" != "0" ]; then
+            echo "run_pass=false" >> "$GITHUB_OUTPUT"
+            echo "A daemon run is active — standing down."
+          else
+            echo "run_pass=true" >> "$GITHUB_OUTPUT"
+            echo "No daemon run is active — doing one check here."
+          fi
+
+      - name: Node version (preinstalled — setup-node is forbidden here)
+        if: steps.check.outputs.run_pass == 'true'
+        run: node --version
+
+      - name: Configure git
+        if: steps.check.outputs.run_pass == 'true'
+        run: |
+          git config user.name  "fixture-watch[bot]"
+          git config user.email "fixture-watch@users.noreply.github.com"
+
+      - name: One check
+        if: steps.check.outputs.run_pass == 'true'
+        env:
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+        run: |
+          set -o pipefail
+          # No --force: the script applies its own Melbourne-time gate, so a fire
+          # delivered in the quiet period exits in a couple of seconds.
+          node scripts/fixture-watch.js
