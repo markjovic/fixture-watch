@@ -235,7 +235,7 @@
       "opp": "MEPS Mavericks (Gr 6)",
       "oppId": "cd1465e3",
       "home": true,
-      "st": "IN_PROGRESS",
+      "st": "FINAL",
       "gid": "6676abfd",
       "gn": "Monday Boys Grade 6",
       "rn": "Round 16",
@@ -407,9 +407,9 @@
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-23",
-    "checkedAt": "2026-11-16T07:31:06.424Z"
+    "checkedAt": "2026-11-16T08:00:19.119Z"
   },
   "firstSeenAt": "2026-11-15T09:15:41.590Z",
-  "lastChangeAt": "2026-11-16T07:31:06.425Z",
-  "lastCheckedAt": "2026-11-16T07:31:06.425Z"
+  "lastChangeAt": "2026-11-16T08:00:19.119Z",
+  "lastCheckedAt": "2026-11-16T08:00:19.119Z"
 }
