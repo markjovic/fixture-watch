@@ -104,8 +104,8 @@
     "76b04de5": {
       "d": "2026-11-20",
       "t": "17:45",
-      "v": "Wesley College - Glen Waverley campus",
-      "c": "Court 1",
+      "v": "Vermont Secondary College",
+      "c": "Court 2",
       "opp": "B13 E.Bees 2",
       "oppId": "f787a60a",
       "home": true,
@@ -114,11 +114,53 @@
       "gn": "Friday U13 Boys A",
       "rn": "Round 7",
       "finals": false
+    },
+    "1c93b47a": {
+      "d": "2026-11-27",
+      "t": "18:00",
+      "v": "Wantirna College",
+      "c": "Court 1",
+      "opp": "B13 Maroondah Magic 1",
+      "oppId": "43878738",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 8",
+      "finals": false
+    },
+    "49e908d5": {
+      "d": "2026-12-04",
+      "t": "18:30",
+      "v": "Forest Hill Secondary College",
+      "c": "Court 2",
+      "opp": "B13 Vermont Vultures 1",
+      "oppId": "2aa16d40",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 9",
+      "finals": false
+    },
+    "0d20ecce": {
+      "d": "2026-12-11",
+      "t": "17:45",
+      "v": "THE SUMMIT SPORTS COMPLEX (Forest Hill Chase).",
+      "c": "Court 1",
+      "opp": "B13 Heathmont Hornets 1",
+      "oppId": "3fb096b6",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "7d0c2383",
+      "gn": "Friday U13 Boys A",
+      "rn": "Round 10",
+      "finals": false
     }
   },
   "rounds": {
     "gid": "7d0c2383",
-    "fetchedAt": "2026-11-15T21:00:14.249Z",
+    "fetchedAt": "2026-11-16T06:30:40.207Z",
     "list": [
       {
         "id": "0a59f82d",
@@ -255,12 +297,9 @@
     "currentRoundName": "Round 7",
     "nonFinalsRoundsInGrade": 16,
     "nonFinalsRounds": 10,
-    "covered": 1,
+    "covered": 4,
     "complete": false,
     "missing": [
-      "Round 8",
-      "Round 9",
-      "Round 10",
       "Round 11",
       "Round 12",
       "Round 13",
@@ -269,10 +308,10 @@
       "Round 16"
     ],
     "finalsRoundsInGrade": 2,
-    "lastGameDate": "2026-11-20",
-    "checkedAt": "2026-11-15T21:00:14.249Z"
+    "lastGameDate": "2026-12-11",
+    "checkedAt": "2026-11-16T06:30:40.207Z"
   },
   "firstSeenAt": "2026-11-15T09:15:43.992Z",
-  "lastChangeAt": "2026-11-15T09:15:43.992Z",
-  "lastCheckedAt": "2026-11-15T21:00:14.250Z"
+  "lastChangeAt": "2026-11-16T06:30:40.207Z",
+  "lastCheckedAt": "2026-11-16T06:30:40.207Z"
 }
