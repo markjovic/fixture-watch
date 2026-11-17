@@ -5,36 +5,53 @@
 # session acquisition included. The runner's preinstalled Node is used instead.
 #
 # ─── THE CRON IS A STARTER, NOT THE CLOCK ───────────────────────────────────
-# MEASURED 2026-11-15/16 on this repo: a `7,37 * * * *` schedule delivered TWO fires
-# out of an expected EIGHTEEN overnight, one of them at 02:51 — neither :07 nor :37.
-# GitHub drops most fires on a high-frequency cron. So this now fires ONCE a day and
-# the job itself keeps the cadence, checking every 30 minutes from inside a
-# long-running process (scripts/fixture-watch-daemon.js).
+# MEASURED ON THIS REPO:
+#   2026-11-15/16  `7,37 * * * *` delivered TWO fires out of an expected EIGHTEEN
+#                  overnight, one at 02:51 — neither :07 nor :37.
+#   2026-11-17     a single daily `45 19 * * *` fire was NOT delivered at all.
+# GitHub's scheduler drops fires. Assume any individual fire will not arrive.
 #
-# ─── WHY FOUR JOBS ──────────────────────────────────────────────────────────
+# So the job keeps the cadence itself (scripts/fixture-watch-daemon.js), and the
+# cron's only job is to START it — FOUR TIMES across the early morning, half an hour
+# apart, so a dropped fire costs nothing. The first one to land does the day's work;
+# every later one finds it already running and stands down in about twenty seconds.
+#
+# ⚠️ THE STAND-DOWN GUARD IS WHAT MAKES MULTIPLE STARTERS SAFE. Without it the
+# second fire would start a SECOND full chain alongside the first, and the two would
+# race each other's state commits all day. The guard applies ONLY to `schedule`
+# runs: a manual dispatch is always deliberate and always proceeds.
+#
+# ⚠️ LEGS 2–4 ALSO CHECK leg1's `proceed` OUTPUT. They run on `always()`, so without
+# that condition a leg1 that stood down would still be followed by three legs
+# starting their own daemons. They take `needs: [leg1, <previous>]` so they can read
+# leg1's output while keeping the chain in order.
+#
+# ─── WHY FOUR LEGS ──────────────────────────────────────────────────────────
 # A job is capped at 6 hours (https://docs.github.com/en/actions/reference/limits)
 # and the active day is 15 hours. Four legs chained with `needs:` live in ONE
-# workflow run — which is capped at 35 days — so nothing is dispatched between them:
-# no PAT, no chain to lose, nothing that can silently fail and leave the day dead.
-# Each leg is given a Melbourne WALL-CLOCK end time rather than a duration, so a
-# late start costs that leg time and never pushes the whole day sideways.
+# workflow run — capped at 35 days — so nothing is dispatched between them: no PAT,
+# no chain to lose. Each leg has a Melbourne WALL-CLOCK end time, not a duration, so
+# a late start costs that leg and never pushes the day sideways.
 #
-# ⚠️ EVERY LATER LEG RUNS ON `always() && !cancelled()`. A failed leg must not cost
-# the rest of the day; `!cancelled()` is what still lets you stop everything by
-# cancelling the run. Do NOT change this to `success()`.
+# ⚠️ Later legs run on `always() && !cancelled()`. A failed leg must not cost the
+# rest of the day; `!cancelled()` is what still lets a human stop the run by
+# cancelling it. NEVER change this to `success()`.
 #
 # ─── DAYLIGHT SAVING ────────────────────────────────────────────────────────
-# GitHub cron is UTC. 19:45 UTC is 06:45 in Melbourne during AEDT and 05:45 during
-# AEST. Leg 1 sleeps until 07:00 Melbourne either way, so the shift costs nothing
-# and there is no DST arithmetic anywhere.
+# GitHub cron is UTC. The four starters span 06:45–08:15 Melbourne in AEDT and
+# 05:45–07:15 in AEST. Leg 1 sleeps until 07:00 Melbourne either way, so the shift
+# costs nothing and there is no DST arithmetic anywhere.
 
 name: Fixture Watch
 
 on:
   schedule:
-    # 19:45 UTC daily = 06:45 AEDT / 05:45 AEST. Deliberately off the hour and half
-    # hour, where GitHub's scheduler is most congested.
+    # Four starters. The first to be delivered wins; the rest stand down.
+    # Deliberately off the hour and half hour, where the scheduler is most congested.
     - cron: '45 19 * * *'
+    - cron: '14 20 * * *'
+    - cron: '43 20 * * *'
+    - cron: '12 21 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -55,28 +72,60 @@ on:
 
 permissions:
   contents: write
+  actions: read          # the stand-down guard reads this workflow's own run list
 
-# NOTE: NO `concurrency` GROUP, DELIBERATELY. A group would make the watchdog
-# workflow QUEUE behind a five-hour leg instead of standing down, and a queued run
-# can be evicted by the next arrival. The watchdog checks for a running daemon
-# itself and exits.
+# NOTE: NO `concurrency` GROUP, DELIBERATELY. A group would queue a second starter
+# behind a fifteen-hour run instead of letting it stand down, and a queued run can be
+# evicted by the next arrival. It would also make the watchdog queue rather than
+# exit. The explicit guard below is the interlock.
 
 jobs:
   leg1:
     name: until 10:00
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Stand down if another run is already covering today
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch — proceeding without checking for other runs."
+            exit 0
+          fi
+          OTHERS=$(gh run list --workflow=fixture-watch.yml --limit=30 \
+                     --json databaseId,status \
+                     --jq '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="waiting") | select(.databaseId != ${{ github.run_id }})] | length')
+          echo "other active runs of this workflow: $OTHERS"
+          if [ "$OTHERS" != "0" ]; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "Another run is already covering today — standing down."
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "No other run active — this one takes the day."
+          fi
+
       - name: Node version (preinstalled — setup-node is forbidden here)
+        if: steps.guard.outputs.proceed == 'true'
         run: node --version
+
       - name: Configure git
+        if: steps.guard.outputs.proceed == 'true'
         run: |
           git config user.name  "fixture-watch[bot]"
           git config user.email "fixture-watch@users.noreply.github.com"
+
       - name: Watch
+        if: steps.guard.outputs.proceed == 'true'
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
@@ -92,8 +141,8 @@ jobs:
 
   leg2:
     name: until 14:00
-    needs: leg1
-    if: ${{ always() && !cancelled() && inputs.single_leg != true && inputs.single_leg != 'true' }}
+    needs: [leg1]
+    if: ${{ always() && !cancelled() && needs.leg1.outputs.proceed == 'true' && inputs.single_leg != true && inputs.single_leg != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -120,8 +169,8 @@ jobs:
 
   leg3:
     name: until 18:00
-    needs: leg2
-    if: ${{ always() && !cancelled() && inputs.single_leg != true && inputs.single_leg != 'true' }}
+    needs: [leg1, leg2]
+    if: ${{ always() && !cancelled() && needs.leg1.outputs.proceed == 'true' && inputs.single_leg != true && inputs.single_leg != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -148,8 +197,8 @@ jobs:
 
   leg4:
     name: until 22:00
-    needs: leg3
-    if: ${{ always() && !cancelled() && inputs.single_leg != true && inputs.single_leg != 'true' }}
+    needs: [leg1, leg3]
+    if: ${{ always() && !cancelled() && needs.leg1.outputs.proceed == 'true' && inputs.single_leg != true && inputs.single_leg != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
