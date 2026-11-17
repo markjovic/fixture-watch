@@ -86,11 +86,25 @@
       "gn": "Saturday U13 Boys D",
       "rn": "Round 5",
       "finals": false
+    },
+    "a689d34e": {
+      "d": "2026-11-21",
+      "t": "10:15",
+      "v": "Box Hill High School",
+      "c": "Court 1",
+      "opp": "B13 Nunawading Kangas 3 (CR)",
+      "oppId": "c0d726eb",
+      "home": false,
+      "st": "UPCOMING",
+      "gid": "c11d7661",
+      "gn": "Saturday U13 Boys D",
+      "rn": "Round 6",
+      "finals": false
     }
   },
   "rounds": {
     "gid": "c11d7661",
-    "fetchedAt": "2026-11-16T20:58:12.781Z",
+    "fetchedAt": "2026-11-17T10:00:56.652Z",
     "list": [
       {
         "id": "3548eb51",
@@ -220,10 +234,9 @@
     "currentRoundName": "Round 6",
     "nonFinalsRoundsInGrade": 15,
     "nonFinalsRounds": 10,
-    "covered": 0,
+    "covered": 1,
     "complete": false,
     "missing": [
-      "Round 6",
       "Round 7",
       "Round 8",
       "Round 9",
@@ -235,10 +248,10 @@
       "Round 15"
     ],
     "finalsRoundsInGrade": 2,
-    "lastGameDate": "2026-11-14",
-    "checkedAt": "2026-11-16T20:58:12.782Z"
+    "lastGameDate": "2026-11-21",
+    "checkedAt": "2026-11-17T10:00:56.652Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-15T09:15:39.262Z",
-  "lastCheckedAt": "2026-11-16T20:58:12.782Z"
+  "lastChangeAt": "2026-11-17T10:00:56.653Z",
+  "lastCheckedAt": "2026-11-17T10:00:56.653Z"
 }
