@@ -11,20 +11,25 @@
 #   2026-11-17     a single daily `45 19 * * *` fire was NOT delivered at all.
 # GitHub's scheduler drops fires. Assume any individual fire will not arrive.
 #
-# OBSERVED DELIVERY, both workflows, 2026-11-15 → 17: roughly TWO OR THREE fires a
-# day, whatever the cron asks for — half-hourly got 2 then 3; a single daily fire got
-# 0. That is a throttle, not random loss, and it decides the design:
+# OBSERVED DELIVERY, 2026-11-15 → 17 — and the number that matters is the RATIO:
+#   half-hourly cron (~48 requests/day)  → 2, then 3 fires delivered
+#   single daily cron (1 request/day)    → 0 fires delivered
+# Only a small fraction of requested fires arrive, so HOW OFTEN A WORKFLOW ASKS is
+# what decides whether it ever runs. A workflow that asks once a day mostly gets
+# nothing. This is why the watchdog kept firing while this workflow did not: it had
+# forty-eight tickets and this had one. It was never about which workflow GitHub
+# preferred.
 #
-#   ⚠️ WE DO NOT NEED A FIRE AT 07:00. WE NEED ONE FIRE, AT ANY HOUR.
+#   ⚠️ WE DO NOT NEED A FIRE AT 07:00. WE NEED ONE FIRE, AT ANY HOUR —
+#      SO ASK AS OFTEN AS POSSIBLE AND MAKE THE EXTRA FIRES FREE.
 #
 # The leg chain covers from wherever it starts through to 22:00, and a leg whose end
 # time has already passed exits immediately with zero passes and hands on — so a
-# chain started at 14:45 simply begins at leg 3. Clustering the starters in the
-# morning would waste the throttle budget on a narrow window; spreading them across
-# the whole active day means almost any delivered fire buys the rest of the day.
+# chain started at 14:45 simply begins at leg 3.
 #
-# So: EIGHT starters, every two hours across the active day. The first to land does
-# the work; every later one finds it already running and stands down in ~20 seconds.
+# So the starter cron is HALF-HOURLY, and the guard below makes every fire after the
+# first one of the day a ~20-second no-op. An earlier version used one daily starter,
+# then eight; both were far too few at this delivery rate.
 #
 # ⚠️ THE STAND-DOWN GUARD IS WHAT MAKES MULTIPLE STARTERS SAFE. Without it the
 # second fire would start a SECOND full chain alongside the first, and the two would
@@ -48,27 +53,19 @@
 # cancelling it. NEVER change this to `success()`.
 #
 # ─── DAYLIGHT SAVING ────────────────────────────────────────────────────────
-# GitHub cron is UTC. The eight starters land two hours apart across the Melbourne
-# day in either offset. Leg 1 sleeps until 07:00 Melbourne when it starts early, and
-# exits immediately when its 10:00 end time has already passed, so the shift costs
-# nothing and there is no DST arithmetic anywhere.
+# GitHub cron is UTC and the starter fires round the clock, so DST never needs to be
+# computed: the guard asks the Melbourne clock whether this is a sensible moment to
+# start a day, leg 1 sleeps to 07:00 when it starts early, and any leg whose end time
+# has passed exits immediately. There is no DST arithmetic anywhere.
 
 name: Fixture Watch
 
 on:
   schedule:
-    # Eight starters across the active day. The first delivered wins; the rest stand
-    # down. Off the hour and half hour, where the scheduler is most congested.
-    # UTC → AEDT: 06:45, 08:45, 10:45, 12:45, 14:45, 16:45, 18:45, 20:45.
-    # UTC → AEST: one hour earlier; leg 1 sleeps to 07:00 either way.
-    - cron: '45 19 * * *'
-    - cron: '45 21 * * *'
-    - cron: '45 23 * * *'
-    - cron: '45 1 * * *'
-    - cron: '45 3 * * *'
-    - cron: '45 5 * * *'
-    - cron: '45 7 * * *'
-    - cron: '45 9 * * *'
+    # Ask every half hour, all day. Only a fraction of these are ever delivered, and
+    # the guard makes every one after the day's first a ~20-second no-op.
+    # :08 and :38 rather than :00/:30, where the scheduler is most congested.
+    - cron: '8,38 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -126,9 +123,21 @@ jobs:
           if [ "$OTHERS" != "0" ]; then
             echo "proceed=false" >> "$GITHUB_OUTPUT"
             echo "Another run is already covering today — standing down."
+            exit 0
+          fi
+          # ⚠️ A FIRE OUTSIDE THE DAY MUST NOT START A CHAIN. Leg 1 sleeps until
+          # 07:00 Melbourne, so a fire at 01:00 would sit burning a runner for five
+          # and a half hours and achieve nothing before its budget cut it off. From
+          # 05:00 the wait is short enough to be worth it; after 21:30 there is no
+          # pass left to make today.
+          MIN=$(node -e "console.log(require('./scripts/lib/schedule-gate.cjs').melbourneMinutes())")
+          echo "Melbourne minutes since midnight: $MIN (start window is 300–1290)"
+          if [ "$MIN" -lt 300 ] || [ "$MIN" -ge 1290 ]; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "Outside the 05:00–21:30 start window — standing down."
           else
             echo "proceed=true" >> "$GITHUB_OUTPUT"
-            echo "No other run active — this one takes the day."
+            echo "No other run active and inside the start window — this one takes the day."
           fi
 
       - name: Node version (preinstalled — setup-node is forbidden here)
