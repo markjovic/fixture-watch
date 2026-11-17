@@ -11,10 +11,20 @@
 #   2026-11-17     a single daily `45 19 * * *` fire was NOT delivered at all.
 # GitHub's scheduler drops fires. Assume any individual fire will not arrive.
 #
-# So the job keeps the cadence itself (scripts/fixture-watch-daemon.js), and the
-# cron's only job is to START it — FOUR TIMES across the early morning, half an hour
-# apart, so a dropped fire costs nothing. The first one to land does the day's work;
-# every later one finds it already running and stands down in about twenty seconds.
+# OBSERVED DELIVERY, both workflows, 2026-11-15 → 17: roughly TWO OR THREE fires a
+# day, whatever the cron asks for — half-hourly got 2 then 3; a single daily fire got
+# 0. That is a throttle, not random loss, and it decides the design:
+#
+#   ⚠️ WE DO NOT NEED A FIRE AT 07:00. WE NEED ONE FIRE, AT ANY HOUR.
+#
+# The leg chain covers from wherever it starts through to 22:00, and a leg whose end
+# time has already passed exits immediately with zero passes and hands on — so a
+# chain started at 14:45 simply begins at leg 3. Clustering the starters in the
+# morning would waste the throttle budget on a narrow window; spreading them across
+# the whole active day means almost any delivered fire buys the rest of the day.
+#
+# So: EIGHT starters, every two hours across the active day. The first to land does
+# the work; every later one finds it already running and stands down in ~20 seconds.
 #
 # ⚠️ THE STAND-DOWN GUARD IS WHAT MAKES MULTIPLE STARTERS SAFE. Without it the
 # second fire would start a SECOND full chain alongside the first, and the two would
@@ -38,20 +48,27 @@
 # cancelling it. NEVER change this to `success()`.
 #
 # ─── DAYLIGHT SAVING ────────────────────────────────────────────────────────
-# GitHub cron is UTC. The four starters span 06:45–08:15 Melbourne in AEDT and
-# 05:45–07:15 in AEST. Leg 1 sleeps until 07:00 Melbourne either way, so the shift
-# costs nothing and there is no DST arithmetic anywhere.
+# GitHub cron is UTC. The eight starters land two hours apart across the Melbourne
+# day in either offset. Leg 1 sleeps until 07:00 Melbourne when it starts early, and
+# exits immediately when its 10:00 end time has already passed, so the shift costs
+# nothing and there is no DST arithmetic anywhere.
 
 name: Fixture Watch
 
 on:
   schedule:
-    # Four starters. The first to be delivered wins; the rest stand down.
-    # Deliberately off the hour and half hour, where the scheduler is most congested.
+    # Eight starters across the active day. The first delivered wins; the rest stand
+    # down. Off the hour and half hour, where the scheduler is most congested.
+    # UTC → AEDT: 06:45, 08:45, 10:45, 12:45, 14:45, 16:45, 18:45, 20:45.
+    # UTC → AEST: one hour earlier; leg 1 sleeps to 07:00 either way.
     - cron: '45 19 * * *'
-    - cron: '14 20 * * *'
-    - cron: '43 20 * * *'
-    - cron: '12 21 * * *'
+    - cron: '45 21 * * *'
+    - cron: '45 23 * * *'
+    - cron: '45 1 * * *'
+    - cron: '45 3 * * *'
+    - cron: '45 5 * * *'
+    - cron: '45 7 * * *'
+    - cron: '45 9 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
