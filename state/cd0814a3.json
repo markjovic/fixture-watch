@@ -109,7 +109,7 @@
       "opp": "B13 E.Bees 2",
       "oppId": "f787a60a",
       "home": true,
-      "st": "UPCOMING",
+      "st": "IN_PROGRESS",
       "gid": "7d0c2383",
       "gn": "Friday U13 Boys A",
       "rn": "Round 7",
@@ -160,7 +160,7 @@
   },
   "rounds": {
     "gid": "7d0c2383",
-    "fetchedAt": "2026-11-18T06:30:34.410Z",
+    "fetchedAt": "2026-11-20T07:01:03.891Z",
     "list": [
       {
         "id": "0a59f82d",
@@ -309,9 +309,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-12-11",
-    "checkedAt": "2026-11-18T06:30:34.410Z"
+    "checkedAt": "2026-11-20T07:01:03.891Z"
   },
   "firstSeenAt": "2026-11-15T09:15:43.992Z",
-  "lastChangeAt": "2026-11-18T06:30:34.410Z",
-  "lastCheckedAt": "2026-11-18T06:30:34.410Z"
+  "lastChangeAt": "2026-11-20T07:01:03.892Z",
+  "lastCheckedAt": "2026-11-20T07:01:03.892Z"
 }
