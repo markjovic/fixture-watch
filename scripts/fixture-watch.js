@@ -251,11 +251,21 @@ async function ensureSession() {
 }
 
 // ─── doFetch — copied verbatim. fetch() ONLY, resolves on ANY status. ────────
+// ⚠️ ONE DELIBERATE DEVIATION FROM THE VERBATIM COPY: the abort signal.
+// `fetch` has NO default timeout. A request that hangs rather than answering would
+// stall the pass, and because a pass runs inside a five-hour daemon leg there is
+// nothing underneath to cut it short except the job timeout — so one hung socket
+// could cost the rest of the leg. 2026-11-21 showed PlayHQ answering slowly enough
+// to matter: a pass that normally takes 9 seconds took 106 while two calls ground
+// their way to an HTTP 504. The signal changes no header and no TLS behaviour, so
+// it cannot affect the outbound fingerprint CloudFront judges us on.
+const REQUEST_TIMEOUT_MS = 60000;
 async function doFetch(url, bodyObj, headers) {
   const res = await fetch(url, {
     method:  'POST',
     headers: { ...headers, 'request-id': crypto.randomUUID() },
     body:    JSON.stringify(bodyObj),
+    signal:  AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   const rawText = await res.text().catch(() => '');
   let body = null;
@@ -267,6 +277,43 @@ async function doFetch(url, bodyObj, headers) {
 }
 
 const isWafBlock = (rawText) => /cloudfront|Request blocked|ERROR: The request could not be satisfied/i.test(rawText || '') || (rawText || '').includes('DOCTYPE');
+
+// ─── Transient failures are retried INSIDE the pass ──────────────────────────
+// Added 2026-11-21, after PlayHQ returned HTTP 504 on two of four teams in one
+// pass. Nothing was lost — their state was left untouched and the next pass
+// re-asked — but that is a 30-minute hole on a Saturday morning with games on, for
+// a gateway hiccup that a five-second retry would have ridden out.
+//
+// ⚠️ DELIBERATELY NARROW. Only a thrown fetch (socket error, or the abort above)
+// and HTTP 502/504 are retried: a gateway that could not reach PlayHQ at all.
+// 403, 429 and 503 are NOT retried and keep the classification the live scripts
+// use — 403 is the WAF-versus-application distinction, and 429/503 are a rate
+// signal that must be backed off, never hammered. Retrying those would turn a
+// polite refusal into the burst that keeps the penalty window open.
+const TRANSIENT_STATUS  = new Set([502, 504]);
+const RETRY_ATTEMPTS    = 3;                 // the first try plus two retries
+const RETRY_BACKOFF_MS  = [5000, 15000];
+
+async function doFetchTransient(url, bodyObj, headers, label) {
+  let last = 'unknown';
+  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+    try {
+      const r = await doFetch(url, bodyObj, headers);
+      if (!TRANSIENT_STATUS.has(r.status)) return r;
+      last = `HTTP ${r.status}`;
+    } catch (err) {
+      last = `${err.name === 'TimeoutError' ? `no answer in ${REQUEST_TIMEOUT_MS / 1000}s` : (err.code || '')} ${err.message}`.trim();
+    }
+    if (attempt < RETRY_ATTEMPTS) {
+      const wait = RETRY_BACKOFF_MS[attempt - 1];
+      console.log(`     ↻ ${label}: ${last} — retrying in ${wait / 1000}s (attempt ${attempt + 1} of ${RETRY_ATTEMPTS})`);
+      await sleep(wait);
+    }
+  }
+  // Exhausted. The caller turns this into a typed failure, which leaves state
+  // untouched and marks the run red — exactly as before this retry existed.
+  throw new Error(`${last}, and still failing after ${RETRY_ATTEMPTS} attempts`);
+}
 
 // ─── Queries — copied verbatim ───────────────────────────────────────────────
 const Q_PROFILE_TEAMS = {
@@ -363,7 +410,7 @@ const Q_GRADE_ROUNDS = {
 async function probeTeams(profileID) {
   try { await ensureSession(); } catch (err) { return { kind: 'no-session', detail: err.message }; }
   let status, json, rawText;
-  try { ({ status, body: json, rawText } = await doFetch(API_URL, { ...Q_PROFILE_TEAMS, variables: { profileID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie })); }
+  try { ({ status, body: json, rawText } = await doFetchTransient(API_URL, { ...Q_PROFILE_TEAMS, variables: { profileID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie }, `profile ${profileID.slice(0, 13)}`)); }
   catch (err) { return { kind: 'error', detail: err.message }; }
 
   if (status === 403) {
@@ -386,7 +433,7 @@ async function probeTeams(profileID) {
 async function teamFixture(teamID) {
   try { await ensureSession(); } catch (err) { return { kind: 'no-session', detail: err.message }; }
   let status, json, rawText;
-  try { ({ status, body: json, rawText } = await doFetch(API_URL, { ...Q_TEAM_FIXTURE, variables: { teamID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie })); }
+  try { ({ status, body: json, rawText } = await doFetchTransient(API_URL, { ...Q_TEAM_FIXTURE, variables: { teamID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie }, `fixture ${teamID}`)); }
   catch (err) { return { kind: 'error', detail: err.message }; }
 
   if (status === 403) {
@@ -407,7 +454,7 @@ async function teamFixture(teamID) {
 async function gradeRounds(gradeID) {
   try { await ensureSession(); } catch (err) { return { kind: 'no-session', detail: err.message }; }
   let status, json, rawText;
-  try { ({ status, body: json, rawText } = await doFetch(API_URL, { ...Q_GRADE_ROUNDS, variables: { gradeID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie })); }
+  try { ({ status, body: json, rawText } = await doFetchTransient(API_URL, { ...Q_GRADE_ROUNDS, variables: { gradeID } }, { ...HEADERS_BASE, 'Cookie': sessionCookie }, `grade rounds ${gradeID}`)); }
   catch (err) { return { kind: 'error', detail: err.message }; }
 
   if (status === 403) {
