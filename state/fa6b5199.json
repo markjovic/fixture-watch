@@ -95,7 +95,7 @@
       "opp": "U13 MMB04",
       "oppId": "22355b01",
       "home": false,
-      "st": "PENDING",
+      "st": "FINAL",
       "gid": "ed7c738b",
       "gn": "Saturday U13 Boys B",
       "rn": "Round 6",
@@ -344,9 +344,9 @@
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2027-02-27",
-    "checkedAt": "2026-11-21T04:30:18.176Z"
+    "checkedAt": "2026-11-21T05:00:30.526Z"
   },
   "firstSeenAt": "2026-11-15T09:15:46.433Z",
-  "lastChangeAt": "2026-11-21T04:30:18.176Z",
-  "lastCheckedAt": "2026-11-21T04:30:18.176Z"
+  "lastChangeAt": "2026-11-21T05:00:30.526Z",
+  "lastCheckedAt": "2026-11-21T05:00:30.526Z"
 }
