@@ -95,7 +95,7 @@
       "opp": "B13 Nunawading Kangas 3 (CR)",
       "oppId": "c0d726eb",
       "home": false,
-      "st": "PENDING",
+      "st": "FINAL",
       "gid": "c11d7661",
       "gn": "Saturday U13 Boys D",
       "rn": "Round 6",
@@ -104,7 +104,7 @@
   },
   "rounds": {
     "gid": "c11d7661",
-    "fetchedAt": "2026-11-21T00:00:14.277Z",
+    "fetchedAt": "2026-11-21T00:30:27.673Z",
     "list": [
       {
         "id": "3548eb51",
@@ -249,9 +249,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-21",
-    "checkedAt": "2026-11-21T00:00:14.278Z"
+    "checkedAt": "2026-11-21T00:30:27.673Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-21T00:00:14.278Z",
-  "lastCheckedAt": "2026-11-21T00:00:14.278Z"
+  "lastChangeAt": "2026-11-21T00:30:27.674Z",
+  "lastCheckedAt": "2026-11-21T00:30:27.674Z"
 }
