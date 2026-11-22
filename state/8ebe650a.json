@@ -249,7 +249,7 @@
       "opp": "The Jelly Beans",
       "oppId": "f6ef4b4c",
       "home": true,
-      "st": "UPCOMING",
+      "st": "FINAL",
       "gid": "6676abfd",
       "gn": "Monday Boys Grade 6",
       "rn": "Round 17",
@@ -258,7 +258,7 @@
   },
   "rounds": {
     "gid": "6676abfd",
-    "fetchedAt": "2026-11-19T06:30:28.963Z",
+    "fetchedAt": "2026-11-22T22:00:33.593Z",
     "list": [
       {
         "id": "83a6745f",
@@ -407,9 +407,9 @@
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-23",
-    "checkedAt": "2026-11-19T06:30:28.963Z"
+    "checkedAt": "2026-11-22T22:00:33.594Z"
   },
   "firstSeenAt": "2026-11-15T09:15:41.590Z",
-  "lastChangeAt": "2026-11-16T08:00:19.119Z",
-  "lastCheckedAt": "2026-11-19T06:30:28.964Z"
+  "lastChangeAt": "2026-11-22T22:00:33.594Z",
+  "lastCheckedAt": "2026-11-22T22:00:33.594Z"
 }
