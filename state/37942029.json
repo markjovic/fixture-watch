@@ -10,8 +10,8 @@
     "endDate": "2027-03-20",
     "comp": "Junior Domestic - Saturday Competition (GEBC)",
     "assoc": "Melbourne East Basketball Association (MEBA)",
-    "currentGid": "c11d7661",
-    "currentGrade": "Saturday U13 Boys D"
+    "currentGid": "ac2c5793",
+    "currentGrade": "Saturday U13 Boys CR"
   },
   "players": [
     "0afc7690-c2db-4644-b039-af1c34520af3"
@@ -103,123 +103,123 @@
     }
   },
   "rounds": {
-    "gid": "c11d7661",
-    "fetchedAt": "2026-11-21T06:31:12.870Z",
+    "gid": "ac2c5793",
+    "fetchedAt": "2026-11-22T22:30:45.109Z",
     "list": [
       {
-        "id": "3548eb51",
+        "id": "1d1f98e0",
         "name": "Round 1",
         "number": 1,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "b614f0f8",
+        "id": "dc7c6655",
         "name": "Round 2",
         "number": 2,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "fd270296",
+        "id": "c73780d9",
         "name": "Round 3",
         "number": 3,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "5fd5c3b9",
+        "id": "103e52d2",
         "name": "Round 4",
         "number": 4,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "6ad16716",
+        "id": "8d3c6391",
         "name": "Round 5",
         "number": 5,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "471585bf",
+        "id": "de9fd9fa",
         "name": "Round 6",
         "number": 6,
         "current": true,
         "isFinalsRound": false
       },
       {
-        "id": "5d5703f1",
+        "id": "2dee4df0",
         "name": "Round 7",
         "number": 7,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "2abc49cb",
+        "id": "9a6afc39",
         "name": "Round 8",
         "number": 8,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "88c8bd19",
+        "id": "34117cad",
         "name": "Round 9",
         "number": 9,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "2fa1c9b0",
+        "id": "edf9f886",
         "name": "Round 10",
         "number": 10,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "cf89b91b",
+        "id": "6900dbb1",
         "name": "Round 11",
         "number": 11,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "a5307458",
+        "id": "6bacd616",
         "name": "Round 12",
         "number": 12,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "b0fdf912",
+        "id": "2a509594",
         "name": "Round 13",
         "number": 13,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "4247b885",
+        "id": "dc6056bd",
         "name": "Round 14",
         "number": 14,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "595b3e0e",
+        "id": "a97a6eea",
         "name": "Round 15",
         "number": 15,
         "current": false,
         "isFinalsRound": false
       },
       {
-        "id": "ddf99eef",
+        "id": "a6b82f33",
         "name": "Semi Finals",
         "number": 1,
         "current": false,
         "isFinalsRound": true
       },
       {
-        "id": "982f9e21",
+        "id": "21166522",
         "name": "Grand Final",
         "number": 2,
         "current": false,
@@ -228,15 +228,16 @@
     ]
   },
   "coverage": {
-    "gid": "c11d7661",
+    "gid": "ac2c5793",
     "roundsInGrade": 17,
     "fromRound": 6,
     "currentRoundName": "Round 6",
     "nonFinalsRoundsInGrade": 15,
     "nonFinalsRounds": 10,
-    "covered": 1,
+    "covered": 0,
     "complete": false,
     "missing": [
+      "Round 6",
       "Round 7",
       "Round 8",
       "Round 9",
@@ -249,9 +250,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-21",
-    "checkedAt": "2026-11-21T06:31:12.871Z"
+    "checkedAt": "2026-11-22T22:30:45.109Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
   "lastChangeAt": "2026-11-21T06:31:12.872Z",
-  "lastCheckedAt": "2026-11-21T06:31:12.872Z"
+  "lastCheckedAt": "2026-11-22T22:30:45.109Z"
 }
