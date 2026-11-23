@@ -160,7 +160,7 @@
   },
   "rounds": {
     "gid": "7d0c2383",
-    "fetchedAt": "2026-11-20T07:30:17.863Z",
+    "fetchedAt": "2026-11-23T06:30:49.449Z",
     "list": [
       {
         "id": "0a59f82d",
@@ -208,14 +208,14 @@
         "id": "b18dbb33",
         "name": "Round 7",
         "number": 7,
-        "current": true,
+        "current": false,
         "isFinalsRound": false
       },
       {
         "id": "f64ffba4",
         "name": "Round 8",
         "number": 8,
-        "current": false,
+        "current": true,
         "isFinalsRound": false
       },
       {
@@ -293,11 +293,11 @@
   "coverage": {
     "gid": "7d0c2383",
     "roundsInGrade": 18,
-    "fromRound": 7,
-    "currentRoundName": "Round 7",
+    "fromRound": 8,
+    "currentRoundName": "Round 8",
     "nonFinalsRoundsInGrade": 16,
-    "nonFinalsRounds": 10,
-    "covered": 4,
+    "nonFinalsRounds": 9,
+    "covered": 3,
     "complete": false,
     "missing": [
       "Round 11",
@@ -309,9 +309,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-12-11",
-    "checkedAt": "2026-11-20T07:30:17.863Z"
+    "checkedAt": "2026-11-23T06:30:49.449Z"
   },
   "firstSeenAt": "2026-11-15T09:15:43.992Z",
   "lastChangeAt": "2026-11-20T07:30:17.864Z",
-  "lastCheckedAt": "2026-11-20T07:30:17.864Z"
+  "lastCheckedAt": "2026-11-23T06:30:49.450Z"
 }
