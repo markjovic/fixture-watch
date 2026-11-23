@@ -100,11 +100,25 @@
       "gn": "Saturday U13 Boys D",
       "rn": "Round 6",
       "finals": false
+    },
+    "b86a38dc": {
+      "d": "2026-11-28",
+      "t": "10:15",
+      "v": "Box Hill High School",
+      "c": "Court 2",
+      "opp": "B13 Heathmont Hornets 3",
+      "oppId": "ded29bf3",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "ac2c5793",
+      "gn": "Saturday U13 Boys CR",
+      "rn": "Round 7",
+      "finals": false
     }
   },
   "rounds": {
     "gid": "ac2c5793",
-    "fetchedAt": "2026-11-23T02:30:49.961Z",
+    "fetchedAt": "2026-11-23T04:30:35.213Z",
     "list": [
       {
         "id": "1d1f98e0",
@@ -234,11 +248,10 @@
     "currentRoundName": "Round 6",
     "nonFinalsRoundsInGrade": 15,
     "nonFinalsRounds": 10,
-    "covered": 0,
+    "covered": 1,
     "complete": false,
     "missing": [
       "Round 6",
-      "Round 7",
       "Round 8",
       "Round 9",
       "Round 10",
@@ -249,10 +262,10 @@
       "Round 15"
     ],
     "finalsRoundsInGrade": 2,
-    "lastGameDate": "2026-11-21",
-    "checkedAt": "2026-11-23T02:30:49.963Z"
+    "lastGameDate": "2026-11-28",
+    "checkedAt": "2026-11-23T04:30:35.214Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-21T06:31:12.872Z",
-  "lastCheckedAt": "2026-11-23T02:30:49.963Z"
+  "lastChangeAt": "2026-11-23T04:30:35.214Z",
+  "lastCheckedAt": "2026-11-23T04:30:35.214Z"
 }
