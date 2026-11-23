@@ -92,7 +92,7 @@
       "t": "10:15",
       "v": "Box Hill High School",
       "c": "Court 1",
-      "opp": "B13 Nunawading Kangas 3 (CR)",
+      "opp": "B13 Nunawading Kangas 3 (NRF)",
       "oppId": "c0d726eb",
       "home": false,
       "st": "FINAL",
@@ -118,7 +118,7 @@
   },
   "rounds": {
     "gid": "ac2c5793",
-    "fetchedAt": "2026-11-23T04:30:35.213Z",
+    "fetchedAt": "2026-11-23T05:31:00.071Z",
     "list": [
       {
         "id": "1d1f98e0",
@@ -263,9 +263,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-28",
-    "checkedAt": "2026-11-23T04:30:35.214Z"
+    "checkedAt": "2026-11-23T05:31:00.072Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-23T04:30:35.214Z",
-  "lastCheckedAt": "2026-11-23T04:30:35.214Z"
+  "lastChangeAt": "2026-11-23T05:31:00.073Z",
+  "lastCheckedAt": "2026-11-23T05:31:00.073Z"
 }
