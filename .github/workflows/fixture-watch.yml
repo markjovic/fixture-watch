@@ -103,6 +103,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # ⚠️ `ref: main` IS LOAD-BEARING. Without it checkout pins the job to the
+          # SHA THAT TRIGGERED THE RUN, so a later leg starts from the repo as it was
+          # when the day began — without the state the earlier legs committed. It
+          # then pushes with `merge -X ours`, so its STALE copy wins, the change is
+          # re-detected, and the same alert goes out again at every leg handover.
+          # Observed 2026-11-24: a renamed opponent alerting several times in a day.
+          # This is trap T21 in the sibling repo's claude_context.md.
+          ref: main
           fetch-depth: 0
 
       - name: Stand down if another run is already covering today
@@ -155,14 +163,6 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
-          # Fast publish on FINAL (2026-11-23). A PAT with actions:write on
-          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
-          # another repository. ⚠ ABSENT MEANS OFF: with no secret the watcher
-          # logs "publish-on-FINAL is configured but INACTIVE" and behaves exactly
-          # as it did before. It must be on EVERY step that runs the watcher,
-          # including the watchdog's, or a watchdog-only day dispatches nothing
-          # and says so only in a log nobody reads.
-          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -182,6 +182,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # ⚠️ `ref: main` IS LOAD-BEARING. Without it checkout pins the job to the
+          # SHA THAT TRIGGERED THE RUN, so a later leg starts from the repo as it was
+          # when the day began — without the state the earlier legs committed. It
+          # then pushes with `merge -X ours`, so its STALE copy wins, the change is
+          # re-detected, and the same alert goes out again at every leg handover.
+          # Observed 2026-11-24: a renamed opponent alerting several times in a day.
+          # This is trap T21 in the sibling repo's claude_context.md.
+          ref: main
           fetch-depth: 0
       - name: Node version (preinstalled — setup-node is forbidden here)
         run: node --version
@@ -193,14 +201,6 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
-          # Fast publish on FINAL (2026-11-23). A PAT with actions:write on
-          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
-          # another repository. ⚠ ABSENT MEANS OFF: with no secret the watcher
-          # logs "publish-on-FINAL is configured but INACTIVE" and behaves exactly
-          # as it did before. It must be on EVERY step that runs the watcher,
-          # including the watchdog's, or a watchdog-only day dispatches nothing
-          # and says so only in a log nobody reads.
-          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -218,6 +218,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # ⚠️ `ref: main` IS LOAD-BEARING. Without it checkout pins the job to the
+          # SHA THAT TRIGGERED THE RUN, so a later leg starts from the repo as it was
+          # when the day began — without the state the earlier legs committed. It
+          # then pushes with `merge -X ours`, so its STALE copy wins, the change is
+          # re-detected, and the same alert goes out again at every leg handover.
+          # Observed 2026-11-24: a renamed opponent alerting several times in a day.
+          # This is trap T21 in the sibling repo's claude_context.md.
+          ref: main
           fetch-depth: 0
       - name: Node version (preinstalled — setup-node is forbidden here)
         run: node --version
@@ -229,14 +237,6 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
-          # Fast publish on FINAL (2026-11-23). A PAT with actions:write on
-          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
-          # another repository. ⚠ ABSENT MEANS OFF: with no secret the watcher
-          # logs "publish-on-FINAL is configured but INACTIVE" and behaves exactly
-          # as it did before. It must be on EVERY step that runs the watcher,
-          # including the watchdog's, or a watchdog-only day dispatches nothing
-          # and says so only in a log nobody reads.
-          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -254,6 +254,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # ⚠️ `ref: main` IS LOAD-BEARING. Without it checkout pins the job to the
+          # SHA THAT TRIGGERED THE RUN, so a later leg starts from the repo as it was
+          # when the day began — without the state the earlier legs committed. It
+          # then pushes with `merge -X ours`, so its STALE copy wins, the change is
+          # re-detected, and the same alert goes out again at every leg handover.
+          # Observed 2026-11-24: a renamed opponent alerting several times in a day.
+          # This is trap T21 in the sibling repo's claude_context.md.
+          ref: main
           fetch-depth: 0
       - name: Node version (preinstalled — setup-node is forbidden here)
         run: node --version
@@ -265,14 +273,6 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
-          # Fast publish on FINAL (2026-11-23). A PAT with actions:write on
-          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
-          # another repository. ⚠ ABSENT MEANS OFF: with no secret the watcher
-          # logs "publish-on-FINAL is configured but INACTIVE" and behaves exactly
-          # as it did before. It must be on EVERY step that runs the watcher,
-          # including the watchdog's, or a watchdog-only day dispatches nothing
-          # and says so only in a log nobody reads.
-          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
