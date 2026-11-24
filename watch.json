@@ -1,19 +1,46 @@
 {
+  "_path": "watch.json",
   "_comment": "fixture-watch configuration. Edit this file in the GitHub web UI; the watcher reads it on every run. Everything the watcher follows is here — nothing is hardcoded in the scripts.",
 
+  "_sports": "One entry per sport. `tenant` is the PlayHQ tenant header, and it is the ONLY thing that differs between sports at the HTTP level. `link` says how an alert's deep link is built — see scripts/lib/team-links.cjs, which omits a link rather than emitting one it cannot be sure of. The session cookie is tenant-scoped, so each tenant gets its own session, its own call budget and its own failures: one tenant going down never stops the other.",
+  "sports": {
+    "basketball": {
+      "label": "Basketball",
+      "tenant": "basketball-victoria",
+      "link": { "kind": "stattrack", "base": "https://markjovic.github.io/stattrack/", "urlTitle": "Open in StatTrack" }
+    },
+    "footy": {
+      "label": "Footy",
+      "tenant": "afl",
+      "link": { "kind": "footy-dashboard", "base": "https://markjovic.github.io/junior-footy-dashboard/index.html", "urlTitle": "Open in the footy dashboard" },
+
+      "_orgShortCodes": "PlayHQ organisation id -> the SHORT code the footy dashboard uses in its `c` URL key. This is NOT a PlayHQ field: it is copied from the dashboard's own config.json organisations[], where the key is the first eight characters of the organisation uuid. Only the five TRACKED organisations have short names, and only those five are ingested by the dashboard — a team in any other organisation gets NO LINK, which is correct, because the dashboard holds no data for it. Add an entry here only after the dashboard ingests that organisation and config.json gives it a short name.",
+      "orgShortCodes": {
+        "383836bb": "EFNL",
+        "4c8b472e": "WFNL",
+        "1cf85e52": "SEJ",
+        "0f20da4f": "SER",
+        "4f9a099e": "YJFL"
+      }
+    }
+  },
+
+  "_legacyFallback": "tenant / sport / stattrackBase are the pre-footy single-sport keys. They are still read, but ONLY when the `sports` block above is missing or empty, so a half-finished edit cannot leave the watcher quietly watching nothing. Do not delete them.",
   "tenant": "basketball-victoria",
   "sport": "basketball",
   "stattrackBase": "https://markjovic.github.io/stattrack/",
 
+  "_players": "`sports` lists which sports to look this player up in. `uuids` is an optional per-sport override for the rare profile that has a different api-namespace id on another tenant (T72) — Toby does NOT need one: his single uuid resolved on both basketball-victoria and afl, measured 2026-11-24. `pinnedTeams` is a fallback that is never required; as an object it is keyed by sport.",
   "players": [
     {
       "uuid": "0afc7690-c2db-4644-b039-af1c34520af3",
       "name": "Toby",
-      "pinnedTeams": []
+      "sports": ["basketball", "footy"],
+      "pinnedTeams": { "basketball": [], "footy": [] }
     }
   ],
 
-  "_completeFixtureSlotsEvery": "Reduced cadence, and it applies ONLY to a team that has a game in EVERY non-finals round of its grade AND still has a game to come — nothing is left to publish for it until finals. Everything else is checked on EVERY slot, including a team missing rounds (a fixture block is being published) and a team whose last scheduled game has passed (the finals hunt). Nothing is ever stopped by this — see stopAfterSeasonEndDays.",
+  "_completeFixtureSlotsEvery": "Reduced cadence, and it applies ONLY to a team that has a game in EVERY non-finals round of its grade AND still has a game to come — nothing is left to publish for it until finals. Everything else is checked on EVERY slot, including a team missing rounds (a fixture block is being published) and a team whose last scheduled game has passed (the finals hunt). Nothing is ever stopped by this — see stopAfterSeasonEndDays. FOOTY BYES: a bye that PlayHQ does not enter as a game leaves that round uncovered for ever, so footy teams will mostly sit on the FULL cadence. That is the safe direction and the rule is NOT to be loosened.",
   "completeFixtureSlotsEvery": 4,
 
   "_gradeRoundsRefreshHours": "How long a grade's round list is cached in state before it is re-fetched. It is also re-fetched whenever the fixture is incomplete, the grade changes, or the last scheduled game has passed — the case where finals rounds get added.",
@@ -22,20 +49,11 @@
   "_activeChangeWindowDays": "A team that changed within this many days stays on the FULL cadence even with a complete fixture, so the aftermath of a regrade is watched closely.",
   "activeChangeWindowDays": 7,
 
-  "_stopAfterSeasonEndDays": "A team is dropped this many days after its season's endDate. A season with NO endDate is never dropped on age — 808 seasons in the database have none, and a missing date is not an ended season.",
+  "_stopAfterSeasonEndDays": "A team is dropped this many days after its season's endDate. A season with NO endDate is never dropped on age — 808 seasons in the database have none, and a missing date is not an ended season. Footy seasons straddle the calendar year (2026 ran 2025-10-01 to 2026-09-30); only endDate is used here, so that changes nothing.",
   "stopAfterSeasonEndDays": 21,
 
   "_failureAlertCooldownHours": "At most one 'watcher failed' alert in this many hours, so a PlayHQ outage does not spam the phone. The run still goes red every time.",
   "failureAlertCooldownHours": 6,
-
-  "_publishOnFinal": "Fast publish on FINAL. When a watched team's game flips to FINAL, dispatch StatTrack's publish-final-game.yml so the result, the box score and the players' profile stats are live within minutes instead of waiting for the 01:00 nightly. REMOVE THIS BLOCK, set enabled to false, or leave STATTRACK_DISPATCH_TOKEN unset, and the watcher behaves exactly as it did before. GITHUB_TOKEN cannot create a run in another repository, so this needs a PAT with actions:write on the target repo, stored as the STATTRACK_DISPATCH_TOKEN secret. maxRoundsPerPass is a refusal, not a trim: a pass wanting more rounds than this dispatches NONE and says so, because a block that large is a regrade and the nightly already handles those.",
-  "publishOnFinal": {
-    "enabled": true,
-    "repo": "markjovic/sports-players-stats",
-    "workflow": "publish-final-game.yml",
-    "ref": "main",
-    "maxRoundsPerPass": 6
-  },
 
   "_maxAlertChars": "Pushover hard limit is 1024. Messages are built up to this and then truncated with a count of what was left out.",
   "maxAlertChars": 1000
