@@ -982,6 +982,28 @@ async function gitCommit(paths, message) {
         ].filter(Boolean),
         url, priority: 1,
       });
+    } else if (prevCount === 0 && count > 0) {
+      // ── THE FIRST FIXTURE. The mirror of the drop-to-zero alert above, and the
+      // single most important thing this repo does.
+      // MEASURED 2026-11-24: a player registered to a 2027 footy team appears on
+      // publicProfileTeams immediately — team present, grade null, fixture empty.
+      // So a watched team can sit at zero games for months and then receive its
+      // whole season at once. Reporting that as fourteen "+ ADDED" lines truncated
+      // at four is the wrong shape for the alert you have been waiting for.
+      const sorted = Object.values(games).filter(g => g.d).sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+      const first = sorted[0], last = sorted[sorted.length - 1];
+      console.log(`     ★ FIXTURE PUBLISHED — ${count} game(s)`);
+      alerts.push({
+        key: `t:${tid}`,
+        title: `★ ${who} — FIXTURE OUT: ${teamMeta.name || tid}`,
+        lines: [
+          `${count} game(s) published${coverage?.nonFinalsRoundsInGrade ? ` across ${coverage.nonFinalsRoundsInGrade} round(s)` : ''}.`,
+          `${teamMeta.club || ''} · ${teamMeta.seasonName || ''} ${teamMeta.currentGrade ? `· ${teamMeta.currentGrade}` : ''}`.trim(),
+          first ? `First: ${describeGame(first)}` : null,
+          last && last !== first ? `Last:  ${describeGame(last)}` : null,
+        ].filter(Boolean),
+        url, priority: 1,
+      });
     } else if (changes.length || regrade) {
       const lines = [];
       if (regrade) lines.push(`REGRADE: ${prevGids.join(',')} → ${nextGids.join(',')}${teamMeta.currentGrade ? ` (${teamMeta.currentGrade})` : ''}`);
