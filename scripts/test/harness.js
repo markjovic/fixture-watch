@@ -188,45 +188,58 @@ function run(spec) {
 //  UNIT TESTS — the footy link builder, against the MEASURED data
 // ═══════════════════════════════════════════════════════════════════════════
 function unitTests() {
-  const S = 'unit · footy link';
+  const S = 'unit \u00b7 footy link';
   const sp = { link: { kind: 'footy-dashboard', base: FOOTY_BASE }, orgShortCodes: SPORT_FOOTY.orgShortCodes };
   const u = (o) => links.teamUrlFor(sp, o);
   const EFNL = '383836bb-1111-2222-3333-444455556666';
+  const TID  = 'e2b94c0a-aaaa-bbbb-cccc-ddddeeeeffff';
+  // The measured registration: Norwood U12 Purple, grade U12 - B, EFNL, 2026.
+  const reg = { tid: TID, hasPlayedGame: true, teamName: 'Norwood U12 Purple', gradeName: 'U12 - B', seasonName: '2026', orgId: EFNL };
+  const with_ = (over) => u({ ...reg, ...over });
 
-  // The worked example, loaded on Mark's phone and confirmed to land on the team.
-  check(S, 'Norwood U12 Purple / U12 - B / 2026 / EFNL',
-    u({ teamName: 'Norwood U12 Purple', gradeName: 'U12 - B', seasonName: '2026', orgId: EFNL })
-      === `${FOOTY_BASE}#y=2026&c=EFNL&a=U12&t=Norwood%20Purple`,
-    String(u({ teamName: 'Norwood U12 Purple', gradeName: 'U12 - B', seasonName: '2026', orgId: EFNL })));
+  check(S, 'the id-keyed link, exactly',
+    with_({}) === `${FOOTY_BASE}#y=2026&c=EFNL&a=U12&t=${TID}`, String(with_({})));
 
-  // grade: null — a brand new registration, measured on afbd05d3. The age must
-  // come from the TEAM name or there is no link at all.
+  // ⚠️ The dashboard holds a record only for a game marked FINAL, so a team with
+  // none cannot be resolved by ANY key. Both pre-season alerts land here.
+  check(S, 'no played game means NO link', with_({ hasPlayedGame: false }) === null);
+  check(S, 'an absent hasPlayedGame means NO link — it must be opted into',
+    u({ tid: TID, teamName: 'Norwood U12 Purple', gradeName: 'U12 - B', seasonName: '2026', orgId: EFNL }) === null);
+
+  check(S, 'no team id means NO link', with_({ tid: null }) === null);
+  check(S, 'an unmapped org means NO link', with_({ orgId: '11112222-aaaa' }) === null);
+  check(S, 'no age anywhere means NO link', with_({ teamName: 'Norwood Seniors', gradeName: 'Senior Men Division 1' }) === null);
+  check(S, 'a non-year season name means NO link', with_({ seasonName: '2026/27' }) === null);
+  check(S, 'no org id means NO link', with_({ orgId: null }) === null);
+
+  // `a` is STILL derived here — the id swap removed cleanTeam, not the age.
   check(S, 'grade null falls back to the team-name age token',
-    u({ teamName: 'Lilydale U13', gradeName: null, seasonName: '2027', orgId: EFNL })
-      === `${FOOTY_BASE}#y=2027&c=EFNL&a=U13&t=Lilydale`);
-
-  check(S, 'an unmapped org produces NO link', u({ teamName: 'Somewhere U12 Red', gradeName: 'U12 - A', seasonName: '2026', orgId: '11112222-aaaa' }) === null);
-  check(S, 'no age anywhere produces NO link',  u({ teamName: 'Norwood Seniors', gradeName: 'Senior Men Division 1', seasonName: '2026', orgId: EFNL }) === null);
-  check(S, 'a non-year season name produces NO link', u({ teamName: 'Norwood U12 Purple', gradeName: 'U12 - B', seasonName: '2026/27', orgId: EFNL }) === null);
-  check(S, 'no org id produces NO link', u({ teamName: 'Norwood U12 Purple', gradeName: 'U12 - B', seasonName: '2026', orgId: null }) === null);
-
-  // ⚠️ U17.5 must NOT strip a U17 token — the duplicate-record trap of 2026-08-19.
-  check(S, 'U17.5 grade does not strip U17 from the team name',
-    u({ teamName: 'Mt Eliza JFC U17 Boys Red', gradeName: 'U17.5 Boys A', seasonName: '2026', orgId: EFNL })
-      === `${FOOTY_BASE}#y=2026&c=EFNL&a=U17.5&t=Mt%20Eliza%20JFC%20U17%20Boys%20Red`);
-
+    with_({ gradeName: null, teamName: 'Lilydale U13', seasonName: '2027' })
+      === `${FOOTY_BASE}#y=2027&c=EFNL&a=U13&t=${TID}`, String(with_({ gradeName: null, teamName: 'Lilydale U13', seasonName: '2027' })));
   check(S, 'a girls grade carries the Girls suffix in `a`',
-    u({ teamName: 'Norwood U12 Girls Blue', gradeName: 'U12 Girls - B', seasonName: '2026', orgId: EFNL })
-      === `${FOOTY_BASE}#y=2026&c=EFNL&a=U12%20Girls&t=Norwood%20Girls%20Blue`);
+    with_({ gradeName: 'U12 Girls - B', teamName: 'Norwood U12 Girls Blue' })
+      === `${FOOTY_BASE}#y=2026&c=EFNL&a=U12%20Girls&t=${TID}`);
+  check(S, 'U17.5 is read from the grade name, not an ageName',
+    with_({ gradeName: 'U17.5 Boys A', teamName: 'Mt Eliza JFC U17 Boys Red' })
+      === `${FOOTY_BASE}#y=2026&c=EFNL&a=U17.5&t=${TID}`);
 
   check(S, 'the short code matches on the full uuid too',
     links.shortCodeFor('4c8b472e', SPORT_FOOTY.orgShortCodes) === 'WFNL' &&
     links.shortCodeFor('4c8b472e-0000-0000-0000-000000000000', SPORT_FOOTY.orgShortCodes) === 'WFNL');
 
+  // cleanTeam is retained but NOT wired into the link. These pin the old name form
+  // so reverting is one line if the id format ever has to be abandoned, and they
+  // keep the U17.5 trap on the record.
+  check(S, 'cleanTeam still produces the old name form', links.cleanTeam('Norwood U12 Purple', 'U12') === 'Norwood Purple');
+  check(S, 'cleanTeam still refuses to strip U17 for a U17.5 grade', links.cleanTeam('Mt Eliza JFC U17 Boys Red', 'U17.5') === 'Mt Eliza JFC U17 Boys Red');
+  check(S, 'and cleanTeam is NOT in the link any more', !with_({}).includes('Norwood'));
+
   check(S, 'the basketball link is unchanged',
     links.teamUrlFor(SPORT_BB.basketball, { tid: 'T1', sid: 'S1' }) === `${ST_BASE}#t=T1&s=S1`);
   check(S, 'a basketball link with no season id is omitted',
     links.teamUrlFor(SPORT_BB.basketball, { tid: 'T1', sid: null }) === null);
+  check(S, 'basketball ignores hasPlayedGame entirely',
+    links.teamUrlFor(SPORT_BB.basketball, { tid: 'T1', sid: 'S1', hasPlayedGame: false }) === `${ST_BASE}#t=T1&s=S1`);
   check(S, 'an unknown link kind is omitted, not thrown',
     links.teamUrlFor({ link: { kind: 'something-new' } }, { tid: 'T1', sid: 'S1' }) === null);
 }
@@ -503,8 +516,10 @@ const SCENARIOS = [
     const footyAlert = c.pushes.find(p => /Norwood U12 Purple/.test(p.title));
     ck('the footy alert title carries the sport', !!footyAlert && /^\[Footy\]/.test(footyAlert.title), footyAlert ? footyAlert.title : JSON.stringify(c.titles()));
     ck('the basketball alert title carries the sport', c.pushes.some(p => /^\[Basketball\]/.test(p.title)), JSON.stringify(c.titles()));
-    ck('the footy link is the dashboard deep link', !!footyAlert && footyAlert.url === `${FOOTY_BASE}#y=2026&c=EFNL&a=U12&t=Norwood%20Purple`, footyAlert ? String(footyAlert.url) : '(no alert)');
-    ck('and its button says so', !!footyAlert && footyAlert.urlTitle === 'Open in the footy dashboard');
+    // ⚠️ This team's only game is in the FUTURE, so the dashboard holds no record
+    // of it and NO link may be emitted. Basketball is unaffected.
+    ck('the footy alert carries NO link — nothing played yet', !!footyAlert && footyAlert.url === null, footyAlert ? String(footyAlert.url) : '(no alert)');
+    ck('the basketball alert still links to StatTrack', c.pushes.some(p => String(p.url || '').startsWith(ST_BASE)), JSON.stringify(c.pushes.map(p => p.url)));
   },
 },
 
@@ -546,7 +561,7 @@ const SCENARIOS = [
 },
 
 {
-  name: '17 footy new registration — grade null, no fixture, and a link from the TEAM name',
+  name: '17 footy new registration — grade null, no fixture, and therefore NO link',
   cfg: cfgFor({ ...SPORT_BB, footy: SPORT_FOOTY }),
   state: { '_players.json': { [UUID]: { name: 'Toby', bySport: { basketball: { seen: true, teams: {} }, footy: { seen: true, teams: {} } } } } },
   net: { tenants: {
@@ -565,8 +580,10 @@ const SCENARIOS = [
     const nt = c.pushes.find(p => /NEW TEAM/.test(p.title));
     ck('a NEW TEAM alert fired', !!nt, JSON.stringify(c.titles()));
     ck('it is labelled Footy', !!nt && /^\[Footy\]/.test(nt.title), nt ? nt.title : '');
-    ck('the link came from the TEAM name despite grade null',
-      !!nt && nt.url === `${FOOTY_BASE}#y=2027&c=EFNL&a=U13&t=Lilydale`, nt ? String(nt.url) : '');
+    // ⚠️ THE CASE THE WHOLE SUPPRESSION RULE EXISTS FOR. A brand new registration
+    // has no games at all, so the dashboard cannot resolve it on any key. The alert
+    // must still fire, and must carry NO link.
+    ck('the NEW TEAM alert carries NO link', !!nt && nt.url === null, nt ? String(nt.url) : '');
     ck('no grade round call was possible or made', c.calls.filter(x => x.kind === 'grade').length === 0);
     ck('the baseline says no games are scheduled', c.pushes.some(p => /now watching Lilydale U13/.test(p.title) && /No games scheduled ahead/.test(p.message)), JSON.stringify(c.titles()));
   },
@@ -587,6 +604,61 @@ const SCENARIOS = [
     ck('one baseline alert', c.pushes.length === 1 && /now watching/.test(c.pushes[0].title), JSON.stringify(c.titles()));
     ck('the StatTrack link is intact', c.pushes[0].url === `${ST_BASE}#t=${T1}&s=season-1`, String(c.pushes[0].url));
     ck('only the basketball tenant was contacted', c.calls.every(x => x.kind === 'pushover' || x.tenant === BB));
+  },
+},
+
+{
+  name: '19 footy with a played game — the link is the TEAM ID, not the name',
+  cfg: cfgFor({ ...SPORT_BB, footy: SPORT_FOOTY }), state: {},
+  net: { tenants: {
+    [BB]:  { profile: { [UUID]: { data: { publicProfileTeams: [] } } } },
+    [AFL]: {
+      profile: { [UUID]: { data: { publicProfileTeams: [pteam({
+        id: FT, name: 'Norwood U12 Purple', club: 'Norwood', gradeId: FG, gradeName: 'U12 - B',
+        sid: 'footy-season-2027', seasonName: '2027', startDate: '2026-10-01', endDate: null,
+        comp: 'EFNL 2027', orgId: '383836bb-1111-2222-3333-444455556666', assoc: 'Eastern Football Netball League',
+      })] } } },
+      fixture: { [FT]: { data: fixtureData({ tid: FT, gradeId: FG, gradeName: 'U12 - B', sid: 'footy-season-2027', seasonName: '2027', club: 'Norwood', orgId: '383836bb-1111-2222-3333-444455556666', rounds: [
+        round({ id: 'fr1', name: 'Round 1', gradeId: FG, gradeName: 'U12 - B', games: [game({ id: 'fg1', date: PAST, status: 'FINAL', homeId: FT, homeName: 'Norwood U12 Purple', awayId: 'fopp', awayName: 'Vermont U12 Blue' })] }),
+        round({ id: 'fr2', name: 'Round 2', gradeId: FG, gradeName: 'U12 - B', games: [game({ id: 'fg2', date: FUT1, homeId: 'fopp2', homeName: 'Mitcham U12 Red', awayId: FT, awayName: 'Norwood U12 Purple' })] }),
+      ] }) } },
+      grade: { [FG]: { data: gradeData({ gid: FG, name: 'U12 - B', rounds: roundList(2, 1) }) } },
+    },
+  } },
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    const a = c.pushes.find(p => /Norwood U12 Purple/.test(p.title));
+    ck('the footy baseline alert fired', !!a, JSON.stringify(c.titles()));
+    ck('the link carries the team ID', !!a && a.url === `${FOOTY_BASE}#y=2027&c=EFNL&a=U12&t=${FT}`, a ? String(a.url) : '(no alert)');
+    ck('the team NAME is nowhere in the link', !!a && !String(a.url).includes('Norwood'), a ? String(a.url) : '');
+    ck('the button names the dashboard', !!a && a.urlTitle === 'Open in the footy dashboard');
+  },
+},
+
+{
+  name: '20 team gone — the link is judged from the STORED fixture, not a fetch',
+  cfg: cfgFor({ ...SPORT_BB, footy: SPORT_FOOTY }),
+  state: {
+    [`${FT}.json`]: teamState({ tid: FT, sport: 'footy', name: 'Norwood U12 Purple', gid: FG, gradeName: 'U12 - B', orgId: '383836bb-1111-2222-3333-444455556666', lastGameDate: PAST, games: { fg1: ng({ d: PAST, st: 'FINAL', gid: FG, gn: 'U12 - B', rn: 'Round 1' }) } }),
+    '_players.json': { [UUID]: { name: 'Toby', bySport: {
+      basketball: { seen: true, teams: {} },
+      footy: { seen: true, teams: { [FT]: { tid: FT, name: 'Norwood U12 Purple', sid: 'footy-season-2027', seasonName: '2027', endDate: null, regGrade: 'U12 - B', assocId: '383836bb-1111-2222-3333-444455556666' } } } },
+    } },
+  },
+  net: { tenants: {
+    [BB]:  { profile: { [UUID]: { data: { publicProfileTeams: [] } } } },
+    [AFL]: { profile: { [UUID]: { data: { publicProfileTeams: [] } } } },
+  } },
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    const gone = c.pushes.find(p => /TEAM GONE/.test(p.title));
+    ck('a TEAM GONE alert fired', !!gone, JSON.stringify(c.titles()));
+    ck('it is labelled Footy', !!gone && /^\[Footy\]/.test(gone.title), gone ? gone.title : '');
+    // The team is off the profile so nothing was fetched — the stored fixture is
+    // the only evidence that the dashboard can resolve it, and it holds a FINAL game.
+    ck('the link is built from the stored FINAL game', !!gone && gone.url === `${FOOTY_BASE}#y=2027&c=EFNL&a=U12&t=${FT}`, gone ? String(gone.url) : '');
+    ck('the state file is removed', !c.stateExists(`${FT}.json`));
+    ck('no fixture call was made', c.calls.filter(x => x.kind === 'fixture').length === 0);
   },
 },
 
