@@ -2,6 +2,7 @@
   "tid": "fa6b5199",
   "reg": {
     "tid": "fa6b5199",
+    "sport": "basketball",
     "name": "U13 MMB08",
     "club": "Maroondah Magic Basketball Club",
     "sid": "5e26f10f",
@@ -10,6 +11,7 @@
     "endDate": "2027-03-24",
     "comp": "Junior Domestic",
     "assoc": "Kilsyth Basketball",
+    "assocId": "5433b0e3",
     "currentGid": "ed7c738b",
     "currentGrade": "Saturday U13 Boys B"
   },
@@ -344,9 +346,9 @@
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2027-02-27",
-    "checkedAt": "2026-11-24T06:30:45.030Z"
+    "checkedAt": "2026-11-24T09:31:51.866Z"
   },
   "firstSeenAt": "2026-11-15T09:15:46.433Z",
   "lastChangeAt": "2026-11-21T06:31:18.528Z",
-  "lastCheckedAt": "2026-11-24T06:30:45.030Z"
+  "lastCheckedAt": "2026-11-24T09:31:51.867Z"
 }

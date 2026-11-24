@@ -2,6 +2,7 @@
   "tid": "8ebe650a",
   "reg": {
     "tid": "8ebe650a",
+    "sport": "basketball",
     "name": "Coyotes",
     "club": "Kilsyth Basketball",
     "sid": "96c25259",
@@ -10,6 +11,7 @@
     "endDate": "2026-12-11",
     "comp": "After School",
     "assoc": "Kilsyth Basketball",
+    "assocId": "5433b0e3",
     "currentGid": "6676abfd",
     "currentGrade": "Monday Boys Grade 6"
   },
@@ -258,7 +260,7 @@
   },
   "rounds": {
     "gid": "6676abfd",
-    "fetchedAt": "2026-11-23T06:30:47.766Z",
+    "fetchedAt": "2026-11-24T09:31:48.719Z",
     "list": [
       {
         "id": "83a6745f",
@@ -407,9 +409,9 @@
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-23",
-    "checkedAt": "2026-11-23T06:30:47.766Z"
+    "checkedAt": "2026-11-24T09:31:48.719Z"
   },
   "firstSeenAt": "2026-11-15T09:15:41.590Z",
   "lastChangeAt": "2026-11-23T06:30:47.766Z",
-  "lastCheckedAt": "2026-11-23T06:30:47.766Z"
+  "lastCheckedAt": "2026-11-24T09:31:48.720Z"
 }

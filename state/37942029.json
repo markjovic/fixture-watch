@@ -2,6 +2,7 @@
   "tid": "37942029",
   "reg": {
     "tid": "37942029",
+    "sport": "basketball",
     "name": "B13 Spirit Magic 3 (CR)",
     "club": "Spirit Magic Basketball Club",
     "sid": "7f7c13f5",
@@ -10,6 +11,7 @@
     "endDate": "2027-03-20",
     "comp": "Junior Domestic - Saturday Competition (GEBC)",
     "assoc": "Melbourne East Basketball Association (MEBA)",
+    "assocId": "87b2f13c",
     "currentGid": "ac2c5793",
     "currentGrade": "Saturday U13 Boys CR"
   },
@@ -118,7 +120,7 @@
   },
   "rounds": {
     "gid": "ac2c5793",
-    "fetchedAt": "2026-11-24T06:30:38.758Z",
+    "fetchedAt": "2026-11-24T09:31:46.768Z",
     "list": [
       {
         "id": "1d1f98e0",
@@ -262,9 +264,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-28",
-    "checkedAt": "2026-11-24T06:30:38.760Z"
+    "checkedAt": "2026-11-24T09:31:46.770Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
   "lastChangeAt": "2026-11-24T06:30:38.761Z",
-  "lastCheckedAt": "2026-11-24T06:30:38.761Z"
+  "lastCheckedAt": "2026-11-24T09:31:46.771Z"
 }
