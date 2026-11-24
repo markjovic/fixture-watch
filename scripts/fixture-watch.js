@@ -140,38 +140,6 @@ const STOP_AFTER_D    = Number.isFinite(cfg.stopAfterSeasonEndDays) ? cfg.stopAf
 const FAIL_COOLDOWN_H = Number.isFinite(cfg.failureAlertCooldownHours) ? cfg.failureAlertCooldownHours : 6;
 const MAX_ALERT_CHARS = Number.isFinite(cfg.maxAlertChars) ? cfg.maxAlertChars : 1000;
 
-// ─── Fast publish on FINAL (2026-11-23) ──────────────────────────────────────
-// When a watched team's game flips to FINAL, dispatch StatTrack's
-// publish-final-game.yml so the result, the box score and the players' profile
-// stats are live within minutes instead of waiting for the 01:00 nightly.
-//
-// ⚠️ ABSENT CONFIG MEANS OFF. No `publishOnFinal` block in watch.json, or no
-//    STATTRACK_DISPATCH_TOKEN in the environment, and this does nothing at all —
-//    the watcher behaves exactly as it did before. Failure direction is always
-//    "no dispatch", never "a dispatch we did not mean".
-//
-// ⚠️ Scores are still NOT watched (§6 of the project notes). This hangs off
-//    `st`, which has been in FIELDS and diffed since the first version — a game
-//    going PENDING/UPCOMING → FINAL is a STATUS change, not a score change, and
-//    it fires once per game rather than once per score update.
-const PUB = cfg.publishOnFinal && typeof cfg.publishOnFinal === 'object' ? cfg.publishOnFinal : null;
-const PUB_TOKEN    = process.env.STATTRACK_DISPATCH_TOKEN || '';
-const PUB_REPO     = PUB && PUB.repo     ? String(PUB.repo)     : '';
-const PUB_WORKFLOW = PUB && PUB.workflow ? String(PUB.workflow) : 'publish-final-game.yml';
-const PUB_REF      = PUB && PUB.ref      ? String(PUB.ref)      : 'main';
-// A regrade can flip a whole block of games at once. Grouping by (grade, round)
-// collapses most of that, but a run that wants more rounds than this dispatches
-// NONE and says so: the nightly already handles bulk correctly, and a burst of
-// dispatches from a watcher is the kind of thing that is noticed only after it
-// has happened.
-const PUB_MAX_ROUNDS = Number.isFinite(PUB && PUB.maxRoundsPerPass) ? PUB.maxRoundsPerPass : 6;
-const PUB_ENABLED  = !!(PUB && PUB.enabled !== false && PUB_REPO && PUB_TOKEN);
-if (PUB && !PUB_ENABLED) {
-  console.log(`[fixture-watch] publish-on-FINAL is configured but INACTIVE — ${!PUB_REPO ? 'publishOnFinal.repo is empty' : !PUB_TOKEN ? 'STATTRACK_DISPATCH_TOKEN is not set' : 'publishOnFinal.enabled is false'}.`);
-} else if (PUB_ENABLED) {
-  console.log(`[fixture-watch] publish-on-FINAL ACTIVE → ${PUB_REPO} ${PUB_WORKFLOW}@${PUB_REF} (max ${PUB_MAX_ROUNDS} round(s) per pass)`);
-}
-
 let WATCHED = Array.isArray(cfg.players) ? cfg.players.filter(p => p && p.uuid) : [];
 if (ONLY.length) WATCHED = WATCHED.filter(p => ONLY.includes(p.uuid));
 if (!WATCHED.length) { console.error('FATAL: no players to watch. watch.json has none, or --players matched none of them.'); process.exit(2); }
@@ -570,7 +538,31 @@ function describeGame(g) {
 }
 
 // ─── Diff ────────────────────────────────────────────────────────────────────
-function diffFixture(prevGames, nextGames) {
+// ⚠️ A GAME THAT HAS BEEN PLAYED IS HISTORY, AND ITS DETAILS CHANGING IS NOT NEWS.
+// PlayHQ edits completed games after the fact — most often an archival team rename
+// ("ZZ - … - W" and the like) — and there is nothing to act on: the game happened,
+// at the time and place it happened. The sibling repo has the same rule in
+// discover-fixtures.js, which refuses to rewrite a game once it holds a score.
+//
+// Added 2026-11-24 after a past game whose opponent was renamed alerted repeatedly.
+// Scope is narrow on purpose: only FIELD CHANGES on a game that is historical in
+// BOTH the stored and the fetched copy are ignored. A past game being ADDED or
+// REMOVED is still reported — a game vanishing from the record is worth knowing
+// about whenever it happened.
+// Terminal game statuses. Defined HERE rather than lifted with the predicate that
+// uses it — the same block in probe-profile-teams.js has its own copy, and relying
+// on a constant that lives above the extraction point is how a copied block throws
+// a ReferenceError that `node --check` cannot see.
+const TERMINAL = new Set(['FINAL', 'CANCELLED', 'ABANDONED', 'FORFEIT']);
+
+const isHistorical = (g, nowMs) => {
+  if (!g) return false;
+  if (TERMINAL.has(String(g.st || '').toUpperCase())) return true;
+  // End of day, so a game played this morning is not called history until tonight.
+  return !!(g.d && Date.parse(`${g.d}T23:59:59Z`) < nowMs);
+};
+
+function diffFixture(prevGames, nextGames, nowMs = Date.now()) {
   const changes = [];
   const prevIds = Object.keys(prevGames || {});
   const nextIds = Object.keys(nextGames || {});
@@ -578,6 +570,7 @@ function diffFixture(prevGames, nextGames) {
   for (const id of nextIds) {
     if (!prevGames[id]) { changes.push({ type: 'added', id, game: nextGames[id], line: `+ ADDED  ${describeGame(nextGames[id])}` }); continue; }
     const a = prevGames[id], b = nextGames[id];
+    if (isHistorical(a, nowMs) && isHistorical(b, nowMs)) continue;   // history: not news
     const diffs = [];
     for (const [key, label] of FIELDS) {
       if ((a[key] ?? null) !== (b[key] ?? null)) diffs.push(`${label} ${a[key] ?? '—'} → ${b[key] ?? '—'}`);
@@ -596,66 +589,6 @@ function diffFixture(prevGames, nextGames) {
   const regrade = prevGids.length && nextGids.length && prevGids.join(',') !== nextGids.join(',');
 
   return { changes, regrade, prevGids, nextGids };
-}
-
-// ─── Dispatch to StatTrack ───────────────────────────────────────────────────
-// fetch() only, same as every other call in this file. GITHUB_TOKEN cannot create
-// a workflow run across repositories, so this needs a PAT with actions:write on
-// the target repo, supplied as STATTRACK_DISPATCH_TOKEN.
-//
-// 204 is the ONLY success. Anything else is reported and treated as a failure by
-// the caller, which then holds this team's state back so the next pass re-detects
-// the same FINAL and tries again. A lost dispatch must cost one re-ask, never a
-// result that silently never publishes.
-async function dispatchPublish({ season, grade, round, games }) {
-  const url = `https://api.github.com/repos/${PUB_REPO}/actions/workflows/${PUB_WORKFLOW}/dispatches`;
-  const payload = {
-    ref: PUB_REF,
-    inputs: {
-      season: String(season), grade: String(grade), round: String(round),
-      games: games.join(','), source: 'fixture-watch',
-    },
-  };
-  let res;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept':               'application/vnd.github+json',
-        'Authorization':        `Bearer ${PUB_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type':         'application/json',
-        'User-Agent':           'fixture-watch',
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    return { ok: false, detail: `network: ${err && err.message ? err.message : err}` };
-  }
-  if (res.status === 204) return { ok: true, detail: '204' };
-  let text = '';
-  try { text = (await res.text() || '').slice(0, 300); } catch (_) {}
-  return { ok: false, detail: `HTTP ${res.status}${text ? ` — ${text}` : ''}` };
-}
-
-// A game that has just become FINAL: present in both snapshots (or newly added)
-// with a status that was not FINAL before and is now. Grouped by (grade, round)
-// because that is what publish-final-game.yml takes — one dispatch covers every
-// game in the round, so a whole round finishing costs ONE call, not five.
-function finalTransitions(prevGames, changes) {
-  const byRound = new Map();
-  for (const c of changes) {
-    if (c.type !== 'changed' && c.type !== 'added') continue;
-    const g = c.game || {};
-    if (g.st !== 'FINAL') continue;
-    const before = (prevGames || {})[c.id];
-    if (before && before.st === 'FINAL') continue;   // already final — nothing new
-    if (!g.gid || !g.rn) continue;                   // cannot be addressed without both
-    const key = `${g.gid}|${g.rn}`;
-    if (!byRound.has(key)) byRound.set(key, { grade: g.gid, round: g.rn, games: [] });
-    byRound.get(key).games.push(c.id);
-  }
-  return [...byRound.values()];
 }
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -746,7 +679,6 @@ async function gitCommit(paths, message) {
   const pendingWrites  = new Map();   // key -> { file, data }
   const pendingDeletes = new Map();   // key -> { file, tid }
   const pendingPlayers = new Map();   // key -> { uuid, data }
-  const pendingDispatch = new Map();   // key -> [{ season, grade, round, games[] }]
 
   const todayMs = Date.now();
 
@@ -1032,7 +964,7 @@ async function gitCommit(paths, message) {
     }
 
     const prevCount = Object.keys(state.games || {}).length;
-    const { changes, regrade, prevGids, nextGids } = diffFixture(state.games || {}, games);
+    const { changes, regrade, prevGids, nextGids } = diffFixture(state.games || {}, games, todayMs);
 
     // ── The loud one. A fixture that had games and now has none usually means the
     // regrade was made as a NEW team entry, so the real fixture is somewhere else
@@ -1064,27 +996,6 @@ async function gitCommit(paths, message) {
       });
     } else {
       console.log(`     no change (${count} game(s))`);
-    }
-
-    // ── Queue a fast publish for anything that just went FINAL ────────────────
-    // Only reachable on the DIFF path. A team's first pass returns above, so a
-    // baseline never dispatches — otherwise every past result in the fixture would
-    // fire one the first time a team is seen.
-    if (PUB_ENABLED) {
-      const sid = teamMeta && teamMeta.sid;
-      const rounds = finalTransitions(state.games || {}, changes);
-      if (rounds.length && !sid) {
-        console.log(`     ⚠ ${rounds.length} round(s) went FINAL but this team's state carries no season id — cannot dispatch.`);
-      } else if (rounds.length > PUB_MAX_ROUNDS) {
-        console.log(`     ⚠ ${rounds.length} round(s) went FINAL in one pass (limit ${PUB_MAX_ROUNDS}) — dispatching NONE.`);
-        console.log('       A block that large is a regrade or a backlog, which the nightly already handles correctly.');
-        failures.push(`${teamMeta.name || tid}: ${rounds.length} rounds went FINAL at once — fast publish skipped, the nightly will pick them up`);
-      } else if (rounds.length) {
-        for (const r of rounds) {
-          console.log(`     → FINAL: grade ${r.grade} "${r.round}" (${r.games.join(', ')}) — queued for fast publish`);
-        }
-        pendingDispatch.set(`t:${tid}`, rounds.map(r => ({ season: sid, ...r })));
-      }
     }
 
     const changed = changes.length > 0 || regrade || (prevCount > 0 && count === 0);
@@ -1163,28 +1074,6 @@ async function gitCommit(paths, message) {
   if (!DRY_RUN) {
     for (const [key, w] of pendingWrites) {
       if (failedKeys.has(key)) { held++; console.log(`  ↺ holding back state for ${key} — its alert did not send, so the next run re-detects and re-alerts`); continue; }
-      // The dispatch goes BEFORE the state write, for exactly the reason the
-      // alerts do: writing first baselines the FINAL, so a refused dispatch would
-      // never be retried and the result would quietly never publish early.
-      const toDispatch = pendingDispatch.get(key);
-      if (toDispatch && toDispatch.length) {
-        let allOk = true;
-        for (const d of toDispatch) {
-          const r = await dispatchPublish(d);
-          if (r.ok) {
-            console.log(`  ⇢ dispatched publish-final-game: ${d.season} ${d.grade} "${d.round}" (${d.games.length} game(s))`);
-          } else {
-            allOk = false;
-            console.log(`  ✖ dispatch FAILED for ${d.season} ${d.grade} "${d.round}": ${r.detail}`);
-            failures.push(`publish-final-game dispatch failed (${d.grade} ${d.round}): ${r.detail}`);
-          }
-        }
-        if (!allOk) {
-          held++;
-          console.log(`  ↺ holding back state for ${key} — a dispatch failed, so the next run re-detects the FINAL and re-dispatches`);
-          continue;
-        }
-      }
       writeJson(w.file, w.data); touched.add(w.file);
     }
     for (const [, d] of pendingDeletes) {
