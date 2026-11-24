@@ -370,14 +370,20 @@ need it.
 
 ### ⚠️ Omit rather than approximate
 
-`t` is the only dashboard URL key that does **not** toast when it cannot be
-resolved. It is dropped and the unfiltered age group renders instead, so a link with
-a wrong `t` **opens, looks right, and shows the wrong team** — indistinguishable
-from correct at a glance, which is exactly what a notification tapped on a Saturday
-morning is. `y`, `c`, `a`, `g`, `l` and `fc` all toast.
+`scripts/lib/team-links.cjs` returns `null` the moment any key is unavailable. A
+missing link is honest; a wrong one is not.
 
-So `scripts/lib/team-links.cjs` returns `null` the moment any key is unavailable. A
-missing link is honest; a wrong one is not. The known cases that produce no link:
+Before dashboard **v1.08** a wrong `t` failed *silently*, in two ways: a fresh page
+load dropped the key and rendered the whole unfiltered age group — a link that
+opened, looked right and showed the wrong team — and a same-tab tap, which is the
+usual notification case, emptied the view to "0 matches". As of v1.08 both paths
+validate and say so: *"Team Norwood Purple not found in U12 — showing all teams"*.
+Same for `r`.
+
+That makes a stale link degrade **loudly**, not correctly. The dashboard still cannot
+resolve a team renamed since the alert was sent — and a rename is one of the things
+this watcher alerts about — so the rule does not relax. The known cases that produce
+no link:
 
 - the organisation is not in `orgShortCodes` — which is also every organisation the
   dashboard does not ingest, so a link would have found nothing anyway;
@@ -391,6 +397,16 @@ token either, the alert goes out with no link.
 
 **A 2027 link may open an empty view** until the dashboard ingests the 2027 season.
 That is not a defect, just the order things happen in.
+
+### An id-keyed link is coming, but not yet
+
+A `t=<teamId>` format is designed (`claude/team_deep_link.md`) and would remove the
+`cleanTeam` age-strip replication entirely — fixture-watch already holds the team id,
+and the dashboard's fixture query already fetches and discards home/away ids, so the
+API cost is zero. It is deferred because nothing populates those ids until the 2027
+season starts fetching, so the format cannot be verified yet. **Do not change the
+builder's output now**; the swap in January is a change to `footyDashboardUrl()` and
+nothing else.
 
 ### Which organisations are covered
 
