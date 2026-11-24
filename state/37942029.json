@@ -22,7 +22,7 @@
       "t": "11:45",
       "v": "THE SUMMIT SPORTS COMPLEX (Forest Hill Chase).",
       "c": "Court 2",
-      "opp": "B13 Nunawading Kangas 7",
+      "opp": "B13 Nunawading Kangas 7 (CR)",
       "oppId": "8ffc0da3",
       "home": false,
       "st": "FINAL",
@@ -118,7 +118,7 @@
   },
   "rounds": {
     "gid": "ac2c5793",
-    "fetchedAt": "2026-11-23T06:30:43.854Z",
+    "fetchedAt": "2026-11-24T02:31:02.134Z",
     "list": [
       {
         "id": "1d1f98e0",
@@ -159,14 +159,14 @@
         "id": "de9fd9fa",
         "name": "Round 6",
         "number": 6,
-        "current": true,
+        "current": false,
         "isFinalsRound": false
       },
       {
         "id": "2dee4df0",
         "name": "Round 7",
         "number": 7,
-        "current": false,
+        "current": true,
         "isFinalsRound": false
       },
       {
@@ -244,14 +244,13 @@
   "coverage": {
     "gid": "ac2c5793",
     "roundsInGrade": 17,
-    "fromRound": 6,
-    "currentRoundName": "Round 6",
+    "fromRound": 7,
+    "currentRoundName": "Round 7",
     "nonFinalsRoundsInGrade": 15,
-    "nonFinalsRounds": 10,
+    "nonFinalsRounds": 9,
     "covered": 1,
     "complete": false,
     "missing": [
-      "Round 6",
       "Round 8",
       "Round 9",
       "Round 10",
@@ -263,9 +262,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-28",
-    "checkedAt": "2026-11-23T06:30:43.875Z"
+    "checkedAt": "2026-11-24T02:31:02.136Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-23T06:30:43.876Z",
-  "lastCheckedAt": "2026-11-23T06:30:43.876Z"
+  "lastChangeAt": "2026-11-24T02:31:02.137Z",
+  "lastCheckedAt": "2026-11-24T02:31:02.137Z"
 }
