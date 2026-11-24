@@ -4,64 +4,70 @@
 // team into a URL that opens THAT TEAM, or return null.
 //
 // ─── THE RULE THAT OUTRANKS EVERY OTHER RULE HERE ────────────────────────────
-// OMIT RATHER THAN APPROXIMATE.
-//
-// A missing link is honest. A wrong link is not. Every builder here returns null the
-// moment any key it needs is unavailable. Nothing is guessed, nothing is defaulted,
-// nothing is "near enough".
-//
-// ⚠️ THE DASHBOARD-SIDE HISTORY, BECAUSE IT EXPLAINS THE STRICTNESS.
-// Before junior-footy-dashboard v1.08, `t` was the one URL key that failed SILENTLY
-// in two different ways: a fresh page load dropped it and rendered the whole
-// unfiltered age group — a link that opened, looked right and showed the wrong team —
-// and a same-tab tap, the usual notification case, emptied the view to "0 matches".
-// As of v1.08 (2026-11-24) both paths validate and say so out loud:
-//   "Team Norwood Purple not found in U12 — showing all teams"
-// Same for `r`. So a stale link now degrades LOUDLY rather than lying. It is still a
-// stale link — the dashboard cannot resolve a team renamed since the alert was sent,
-// and a rename is one of the things this watcher alerts about — so the rule does not
-// relax. Emitting nothing is still better than emitting a guess.
+// OMIT RATHER THAN APPROXIMATE. A missing link is honest. A link that cannot
+// resolve is not. Every builder returns null the moment anything it needs is
+// unavailable — nothing is guessed, nothing is defaulted, nothing is "near enough".
 //
 // ─── BASKETBALL — StatTrack ──────────────────────────────────────────────────
-// `#t=<teamId>&s=<seasonId>`. Both are ids the watcher holds directly, so there is
-// nothing to derive and the link is either complete or absent.
+// `#t=<teamId>&s=<seasonId>`. Both are ids the watcher holds directly.
 //
-// ─── FOOTY — junior-footy-dashboard ──────────────────────────────────────────
-// `#y=<year>&c=<compShort>&a=<age>&t=<teamName>`
+// ─── FOOTY — junior-footy-dashboard, v1.13 / engine v28 ──────────────────────
+// `#y=<year>&c=<compShort>&a=<age>&t=<teamId>`
 //
-// ⚠️ THE FOOTY LINK IS KEYED ON NAMES, NOT IDS. The dashboard's client model holds
-// no team ids at all — `S.selTeam` filters on `m.home === S.selTeam || m.away ===
-// S.selTeam`. So three of the four keys are DERIVATIONS, and each one can fail:
+// ⚠️ `t` IS NOW THE TEAM ID, NOT THE TEAM NAME (changed 2026-11-24).
+// The dashboard reused the `t` key and resolves it id-first, name-fallback, so
+// every link ever shared keeps working. We send the full api-namespace team uuid —
+// the same id `publicProfileTeams` gives us — which deletes the one genuinely
+// fragile thing about the old format: a replica of the dashboard's cleanTeam()
+// age-strip living in this file, which two repos had to keep in agreement forever.
 //
-//   y  season.name, and only when it is a bare 4-digit year. Anything else → null.
+// The other three keys are UNCHANGED and still derived here, because the dashboard
+// still filters by year, competition and age group:
+//
+//   y  season.name, and only when it is a bare 4-digit year.
 //   c  NOT a PlayHQ field. The dashboard's compShort comes from its OWN config.json
 //      (`organisations[] { code, name }`), so the watcher carries an org-id → short
-//      code map in watch.json. An org that is not in the map → null.
+//      code map in watch.json. An org not in the map → null.
 //   a  the age token from the GRADE name — NOT grades.json ageName, which returns
 //      "U17" for a U17.5 competition. A girls grade is "U12 Girls". When the grade
 //      is null — WHICH IS THE CASE FOR A BRAND NEW REGISTRATION, measured on
 //      afbd05d3 2026-11-24 — fall back to the age token in the TEAM name, and when
 //      there is none of those either → null.
-//   t  the PlayHQ team name with the grade's OWN age token stripped, replicating
-//      cleanTeam(name, gradeAge) from the footy repo's results-engine.js verbatim.
-//      "Norwood U12 Purple" + U12 → "Norwood Purple". ⚠️ Only the matching age is
-//      stripped: a "U17 Boys Red" team in a U17.5 grade keeps its U17, because the
-//      dashboard stored it that way and the two must agree exactly.
 //
-// `g` (grade) is deliberately NOT emitted. A regrade would stale it and the team
-// filter does not need it.
+// `g` is deliberately not emitted. A regrade would stale it and the team filter
+// does not need it.
 //
-// Omitting the gender suffix where the grade name does not carry one is safe: a
-// wrong `a` is reported by the dashboard, and since v1.08 so is a wrong `t`. `t` is
-// never built without an age to strip in any case.
+// ─── ⚠️ THE DASHBOARD ONLY KNOWS GAMES THAT HAVE BEEN PLAYED ─────────────────
+// This is the constraint that matters most, and it is not about ids.
 //
-// ⚠️ AN ID-KEYED `t=<teamId>` FORMAT IS DESIGNED BUT DEFERRED (claude/team_deep_link.md).
-// It would delete the cleanTeam replication below outright — fixture-watch already
-// holds the team id, and the dashboard's fixture query already fetches and discards
-// home/away ids, so the API cost is zero. It cannot be verified until the 2027 season
-// starts populating those ids. THAT IS WHY THIS IS ONE ISOLATED MODULE: the swap in
-// January must be a change to footyDashboardUrl() and nothing else. Do not change the
-// output now.
+// Every dashboard URL key is validated against STORED MATCH RECORDS, and a record
+// exists only for a game PlayHQ has marked FINAL. So NO link into a season resolves
+// before that season's round 1 — whatever key it uses, however correct it is.
+//
+// That lands squarely on the footy alerts that matter most: a NEW TEAM when a club
+// enters next season's registration, and FIXTURE OUT when the draw is published.
+// Both are pre-season by definition. A link on either would open, toast, and show
+// the reader nothing they asked for.
+//
+// So `hasPlayedGame` is REQUIRED for a footy link, and the watcher sets it from its
+// own state: at least one game with status FINAL. That mirrors the dashboard's own
+// stamping rule exactly, using only what this repo already holds, and it needs no
+// knowledge of what the dashboard has ingested. No played game → no link → the
+// alert goes out as text, which is the honest answer.
+//
+// ⚠️ A SEASON FETCHED BEFORE ENGINE v28 HAS RECORDS BUT NO IDS. There was no
+// backfill, by design. Such a season answers by NAME only, so an id-keyed link into
+// it will toast. In practice every footy season this watcher can still alert on is
+// 2027 or later and will have been fetched by v28 — a season is dropped
+// stopAfterSeasonEndDays past its endDate long before this matters. Recorded
+// because it is the one case where the id format is worse than the name format.
+//
+// ⚠️ OPEN QUESTION, RAISED WITH THE DASHBOARD PROJECT AND NOT YET ANSWERED.
+// Ids are stamped only on FINAL games. If the dashboard FILTERS on the id itself
+// rather than resolving it to a name once, an id-keyed link mid-season shows the
+// team's played games and hides the upcoming fixture the alert was about — the
+// wrong half. It would still be the right team, so this is a degradation and not a
+// defect, and the first real footy alert in 2027 will settle it. Do not assume.
 
 'use strict';
 
@@ -87,14 +93,17 @@ function ageToken(text) {
 const ageFromGradeName = (gradeName) => ageToken(gradeName);
 const ageFromTeamName  = (teamName)  => ageToken(teamName);
 
-// ─── cleanTeam — REPLICATED FROM THE FOOTY REPO, NOT REINVENTED ──────────────
-// results-engine.js cleanTeam(name, gradeAge). The dashboard stores team names
-// through this function, so the watcher must produce byte-identical output or the
-// `t` key silently matches nothing.
+// ─── cleanTeam — RETAINED, BUT NO LONGER USED BY THE LINK ───────────────────
+// This is the dashboard's results-engine.js cleanTeam(name, gradeAge), replicated.
+// It built the old name-keyed `t` and is kept for two reasons: the dashboard's
+// name fallback still accepts this exact form, so reverting is one line if the id
+// format ever has to be abandoned; and the unit tests on it are the only written
+// record of a rule two repos once had to agree on — including the trap that a
+// "U17 Boys Red" team in a U17.5 grade keeps its U17, which caused four duplicate
+// records on 2026-08-19.
 //
-// The no-gradeAge branch there strips NOTHING (v20, 2026-08-19 — stripping any
-// U-number produced four duplicate records). Here the equivalent is stronger: no
-// age means no link at all, because `a` is unavailable too.
+// ⚠️ DO NOT WIRE IT BACK INTO footyDashboardUrl() without a reason. Deleting that
+// coupling was the entire point of the id swap.
 function cleanTeam(name, gradeAge) {
   const raw = String(name || '').trim();
   if (!raw) return null;
@@ -138,6 +147,16 @@ function footyDashboardUrl(o) {
   const base = String(o.base || '').trim();
   if (!base) return null;
 
+  // ⚠️ NO PLAYED GAME, NO LINK. The dashboard holds a record only for a game
+  // PlayHQ has marked FINAL, so a link into a season with none resolves to nothing
+  // whatever its keys say. This is the gate that keeps pre-season alerts — NEW TEAM
+  // and FIXTURE OUT, the two that matter most — from carrying a dud link.
+  if (o.hasPlayedGame !== true) return null;
+
+  // t — the full api-namespace team uuid, straight from publicProfileTeams.
+  const teamId = String(o.teamId || '').trim();
+  if (!teamId) return null;
+
   // y — a bare four-digit year, or nothing. Footy seasons straddle the calendar
   // year (2026 ran 2025-10-01 → 2026-09-30) but PlayHQ still names them "2026".
   const year = String(o.seasonName || '').trim();
@@ -151,11 +170,7 @@ function footyDashboardUrl(o) {
   const age = ageFromGradeName(o.gradeName) || ageFromTeamName(o.teamName);
   if (!age) return null;
 
-  // t — the silent key. Built only from an age we actually have.
-  const team = cleanTeam(o.teamName, age);
-  if (!team) return null;
-
-  const q = [['y', year], ['c', code], ['a', age], ['t', team]]
+  const q = [['y', year], ['c', code], ['a', age], ['t', teamId]]
     .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
   return `${base}#${q}`;
 }
@@ -172,6 +187,8 @@ function teamUrlFor(sport, parts) {
     case 'footy-dashboard':
       return footyDashboardUrl({
         base:          link.base,
+        teamId:        parts.tid,
+        hasPlayedGame: parts.hasPlayedGame,
         seasonName:    parts.seasonName,
         orgId:         parts.orgId,
         gradeName:     parts.gradeName,
