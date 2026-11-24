@@ -116,11 +116,25 @@
       "gn": "Saturday U13 Boys CR",
       "rn": "Round 7",
       "finals": false
+    },
+    "0fb7ca11": {
+      "d": "2026-12-05",
+      "t": "11:45",
+      "v": "The Rings (Ringwood)",
+      "c": "Court 1",
+      "opp": "B13 Waverley 8",
+      "oppId": "27d4cb93",
+      "home": true,
+      "st": "UPCOMING",
+      "gid": "ac2c5793",
+      "gn": "Saturday U13 Boys CR",
+      "rn": "Round 8",
+      "finals": false
     }
   },
   "rounds": {
     "gid": "ac2c5793",
-    "fetchedAt": "2026-11-24T09:31:46.768Z",
+    "fetchedAt": "2026-11-24T20:52:06.317Z",
     "list": [
       {
         "id": "1d1f98e0",
@@ -250,10 +264,9 @@
     "currentRoundName": "Round 7",
     "nonFinalsRoundsInGrade": 15,
     "nonFinalsRounds": 9,
-    "covered": 1,
+    "covered": 2,
     "complete": false,
     "missing": [
-      "Round 8",
       "Round 9",
       "Round 10",
       "Round 11",
@@ -263,10 +276,10 @@
       "Round 15"
     ],
     "finalsRoundsInGrade": 2,
-    "lastGameDate": "2026-11-28",
-    "checkedAt": "2026-11-24T09:31:46.770Z"
+    "lastGameDate": "2026-12-05",
+    "checkedAt": "2026-11-24T20:52:06.319Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-24T06:30:38.761Z",
-  "lastCheckedAt": "2026-11-24T09:31:46.771Z"
+  "lastChangeAt": "2026-11-24T20:52:06.319Z",
+  "lastCheckedAt": "2026-11-24T20:52:06.319Z"
 }
