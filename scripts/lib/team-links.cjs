@@ -6,15 +6,21 @@
 // ─── THE RULE THAT OUTRANKS EVERY OTHER RULE HERE ────────────────────────────
 // OMIT RATHER THAN APPROXIMATE.
 //
-// A missing link is honest. A wrong link is not, and on the footy dashboard a wrong
-// one is INVISIBLE: `t` is the only URL key the dashboard does not toast about when
-// it cannot resolve it. It is dropped and the unfiltered age group renders instead,
-// so a link with a wrong `t` opens, looks right, and shows the wrong team — which is
-// indistinguishable from correct at a glance, which is exactly what a notification
-// tapped on a Saturday morning is. `y`, `c`, `a`, `g`, `l` and `fc` all toast.
+// A missing link is honest. A wrong link is not. Every builder here returns null the
+// moment any key it needs is unavailable. Nothing is guessed, nothing is defaulted,
+// nothing is "near enough".
 //
-// So every builder here returns null the moment any key it needs is unavailable.
-// Nothing is guessed, nothing is defaulted, nothing is "near enough".
+// ⚠️ THE DASHBOARD-SIDE HISTORY, BECAUSE IT EXPLAINS THE STRICTNESS.
+// Before junior-footy-dashboard v1.08, `t` was the one URL key that failed SILENTLY
+// in two different ways: a fresh page load dropped it and rendered the whole
+// unfiltered age group — a link that opened, looked right and showed the wrong team —
+// and a same-tab tap, the usual notification case, emptied the view to "0 matches".
+// As of v1.08 (2026-11-24) both paths validate and say so out loud:
+//   "Team Norwood Purple not found in U12 — showing all teams"
+// Same for `r`. So a stale link now degrades LOUDLY rather than lying. It is still a
+// stale link — the dashboard cannot resolve a team renamed since the alert was sent,
+// and a rename is one of the things this watcher alerts about — so the rule does not
+// relax. Emitting nothing is still better than emitting a guess.
 //
 // ─── BASKETBALL — StatTrack ──────────────────────────────────────────────────
 // `#t=<teamId>&s=<seasonId>`. Both are ids the watcher holds directly, so there is
@@ -46,8 +52,16 @@
 // filter does not need it.
 //
 // Omitting the gender suffix where the grade name does not carry one is safe: a
-// wrong `a` TOASTS on the dashboard, so it is visible. Only `t` is silent, and `t`
-// is never built without an age to strip.
+// wrong `a` is reported by the dashboard, and since v1.08 so is a wrong `t`. `t` is
+// never built without an age to strip in any case.
+//
+// ⚠️ AN ID-KEYED `t=<teamId>` FORMAT IS DESIGNED BUT DEFERRED (claude/team_deep_link.md).
+// It would delete the cleanTeam replication below outright — fixture-watch already
+// holds the team id, and the dashboard's fixture query already fetches and discards
+// home/away ids, so the API cost is zero. It cannot be verified until the 2027 season
+// starts populating those ids. THAT IS WHY THIS IS ONE ISOLATED MODULE: the swap in
+// January must be a change to footyDashboardUrl() and nothing else. Do not change the
+// output now.
 
 'use strict';
 
