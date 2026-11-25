@@ -274,7 +274,7 @@
   },
   "rounds": {
     "gid": "6676abfd",
-    "fetchedAt": "2026-11-25T02:00:33.485Z",
+    "fetchedAt": "2026-11-25T23:17:42.964Z",
     "list": [
       {
         "id": "83a6745f",
@@ -392,14 +392,14 @@
         "id": "7fe0b683",
         "name": "Round 17",
         "number": 17,
-        "current": true,
+        "current": false,
         "isFinalsRound": false
       },
       {
         "id": "0e17546c",
         "name": "Semi Finals",
         "number": 1,
-        "current": false,
+        "current": true,
         "isFinalsRound": true
       },
       {
@@ -414,18 +414,18 @@
   "coverage": {
     "gid": "6676abfd",
     "roundsInGrade": 19,
-    "fromRound": 17,
-    "currentRoundName": "Round 17",
+    "fromRound": 1,
+    "currentRoundName": "Semi Finals",
     "nonFinalsRoundsInGrade": 17,
-    "nonFinalsRounds": 1,
-    "covered": 1,
+    "nonFinalsRounds": 17,
+    "covered": 17,
     "complete": true,
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-30",
-    "checkedAt": "2026-11-25T02:00:33.485Z"
+    "checkedAt": "2026-11-25T23:17:42.964Z"
   },
   "firstSeenAt": "2026-11-15T09:15:41.590Z",
   "lastChangeAt": "2026-11-25T02:00:33.486Z",
-  "lastCheckedAt": "2026-11-25T02:00:33.486Z"
+  "lastCheckedAt": "2026-11-25T23:17:42.964Z"
 }
