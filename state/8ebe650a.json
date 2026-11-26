@@ -259,9 +259,9 @@
     },
     "72a1fddf": {
       "d": "2026-11-30",
-      "t": "18:10",
+      "t": "17:30",
       "v": "Lilydale Stadium",
-      "c": "Court 3",
+      "c": "Court 1",
       "opp": "MEPS Mavericks (Gr 6)",
       "oppId": "cd1465e3",
       "home": false,
@@ -423,9 +423,9 @@
     "missing": [],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-11-30",
-    "checkedAt": "2026-11-25T23:17:42.964Z"
+    "checkedAt": "2026-11-26T02:00:59.353Z"
   },
   "firstSeenAt": "2026-11-15T09:15:41.590Z",
-  "lastChangeAt": "2026-11-25T02:00:33.486Z",
-  "lastCheckedAt": "2026-11-25T23:17:42.964Z"
+  "lastChangeAt": "2026-11-26T02:00:59.353Z",
+  "lastCheckedAt": "2026-11-26T02:00:59.354Z"
 }
