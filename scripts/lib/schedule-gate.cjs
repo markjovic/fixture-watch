@@ -8,8 +8,13 @@
 // exits immediately with one line in the log.
 //
 // The schedule, Melbourne local:
-//   07:00–22:00   every fire does work
-//   22:00–07:00   nothing
+//   07:00–23:00   every fire does work
+//   23:00–07:00   nothing
+//
+// Extended from 22:00 to 23:00 on 2026-11-27. Junior games finish around 21:30 and
+// the result is often entered after that, so the last hour of the old window was
+// the one most likely to hold a FINAL the watcher never saw until the next morning.
+// The cost is two extra passes a day.
 //
 // ─── WHY THERE IS NO LONGER A TOP/BOTTOM-OF-HOUR DISTINCTION ─────────────────
 // The original spec was hourly in 07:00–09:00 and 20:00–22:00 and half-hourly in
@@ -98,13 +103,20 @@ function slotDecision(now = new Date()) {
   const slotOrdinal = Math.floor(now.getTime() / 1800000);
 
   let run, why;
-  if (hour < 7 || hour >= 22) {
-    run = false; why = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} is inside the 22:00–07:00 quiet period`;
+  if (hour < ACTIVE_FROM_H || hour >= ACTIVE_TO_H) {
+    run = false; why = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} is inside the ${ACTIVE_TO_H}:00–0${ACTIVE_FROM_H}:00 quiet period`;
   } else {
-    run = true; why = 'inside the 07:00–22:00 active window — every delivered fire does work';
+    run = true; why = `inside the 0${ACTIVE_FROM_H}:00–${ACTIVE_TO_H}:00 active window — every delivered fire does work`;
   }
 
   return { run, why, local, hour, minute, half, slotOrdinal, zone: ZONE };
 }
 
-module.exports = { slotDecision, melbourneParts, melbourneMinutes, msUntilMelbourne, ZONE, ACTIVE_FROM_H: 7, ACTIVE_TO_H: 22 };
+// ⚠️ THE WINDOW IS DEFINED ONCE, HERE. The daemon reads these two constants for
+// its banner, its end-of-day check and its leg clamp, so changing the hours means
+// changing them here and nowhere else in the JS. The workflow's leg end times are
+// separate and must be kept in step by hand.
+const ACTIVE_FROM_H = 7;
+const ACTIVE_TO_H   = 23;
+
+module.exports = { slotDecision, melbourneParts, melbourneMinutes, msUntilMelbourne, ZONE, ACTIVE_FROM_H, ACTIVE_TO_H };
