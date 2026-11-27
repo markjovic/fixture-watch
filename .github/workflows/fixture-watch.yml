@@ -23,7 +23,7 @@
 #   ⚠️ WE DO NOT NEED A FIRE AT 07:00. WE NEED ONE FIRE, AT ANY HOUR —
 #      SO ASK AS OFTEN AS POSSIBLE AND MAKE THE EXTRA FIRES FREE.
 #
-# The leg chain covers from wherever it starts through to 22:00, and a leg whose end
+# The leg chain covers from wherever it starts through to 23:00, and a leg whose end
 # time has already passed exits immediately with zero passes and hands on — so a
 # chain started at 14:45 simply begins at leg 3.
 #
@@ -79,7 +79,7 @@ on:
         default: '30'
         type: string
       single_leg:
-        description: 'Run leg 1 only, ending at 22:00. For testing.'
+        description: 'Run leg 1 only, ending at 23:00. For testing.'
         required: false
         default: false
         type: boolean
@@ -163,12 +163,21 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+          # Fast publish on FINAL. A PAT with actions:write on
+          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
+          # another repository. ⚠️ WITHOUT THIS LINE THE WATCHER STILL RUNS AND
+          # STILL ALERTS, and simply never dispatches: the script logs
+          # "publish-on-FINAL configured but INACTIVE". That is exactly how it went
+          # unnoticed for three days from 2026-11-24. If the secret is absent the
+          # value is empty and the behaviour is the same — no dispatch, never a
+          # wrong one.
+          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
           if [ -z "$INTERVAL" ]; then INTERVAL='30'; fi
           UNTIL='10:00'
-          if [ "${{ inputs.single_leg }}" = "true" ]; then UNTIL='22:00'; fi
+          if [ "${{ inputs.single_leg }}" = "true" ]; then UNTIL='23:00'; fi
           PASS=''
           if [ "${{ inputs.dry_run }}" = "true" ]; then PASS='--dry-run'; fi
           node scripts/fixture-watch-daemon.js --until="$UNTIL" --interval="$INTERVAL" --budget-min=330 --pass-args="$PASS"
@@ -201,6 +210,15 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+          # Fast publish on FINAL. A PAT with actions:write on
+          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
+          # another repository. ⚠️ WITHOUT THIS LINE THE WATCHER STILL RUNS AND
+          # STILL ALERTS, and simply never dispatches: the script logs
+          # "publish-on-FINAL configured but INACTIVE". That is exactly how it went
+          # unnoticed for three days from 2026-11-24. If the secret is absent the
+          # value is empty and the behaviour is the same — no dispatch, never a
+          # wrong one.
+          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -237,6 +255,15 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+          # Fast publish on FINAL. A PAT with actions:write on
+          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
+          # another repository. ⚠️ WITHOUT THIS LINE THE WATCHER STILL RUNS AND
+          # STILL ALERTS, and simply never dispatches: the script logs
+          # "publish-on-FINAL configured but INACTIVE". That is exactly how it went
+          # unnoticed for three days from 2026-11-24. If the secret is absent the
+          # value is empty and the behaviour is the same — no dispatch, never a
+          # wrong one.
+          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -246,7 +273,7 @@ jobs:
           node scripts/fixture-watch-daemon.js --until=18:00 --interval="$INTERVAL" --budget-min=330 --pass-args="$PASS"
 
   leg4:
-    name: until 22:00
+    name: until 23:00
     needs: [leg1, leg3]
     if: ${{ always() && !cancelled() && needs.leg1.outputs.proceed == 'true' && inputs.single_leg != true && inputs.single_leg != 'true' }}
     runs-on: ubuntu-latest
@@ -273,10 +300,19 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+          # Fast publish on FINAL. A PAT with actions:write on
+          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
+          # another repository. ⚠️ WITHOUT THIS LINE THE WATCHER STILL RUNS AND
+          # STILL ALERTS, and simply never dispatches: the script logs
+          # "publish-on-FINAL configured but INACTIVE". That is exactly how it went
+          # unnoticed for three days from 2026-11-24. If the secret is absent the
+          # value is empty and the behaviour is the same — no dispatch, never a
+          # wrong one.
+          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
           if [ -z "$INTERVAL" ]; then INTERVAL='30'; fi
           PASS=''
           if [ "${{ inputs.dry_run }}" = "true" ]; then PASS='--dry-run'; fi
-          node scripts/fixture-watch-daemon.js --until=22:00 --interval="$INTERVAL" --budget-min=330 --pass-args="$PASS"
+          node scripts/fixture-watch-daemon.js --until=23:00 --interval="$INTERVAL" --budget-min=330 --pass-args="$PASS"

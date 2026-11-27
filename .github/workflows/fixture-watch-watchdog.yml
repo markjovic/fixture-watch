@@ -89,6 +89,15 @@ jobs:
         env:
           PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
           PUSHOVER_USER:  ${{ secrets.PUSHOVER_USER }}
+          # Fast publish on FINAL. A PAT with actions:write on
+          # markjovic/sports-players-stats — GITHUB_TOKEN cannot create a run in
+          # another repository. ⚠️ WITHOUT THIS LINE THE WATCHER STILL RUNS AND
+          # STILL ALERTS, and simply never dispatches: the script logs
+          # "publish-on-FINAL configured but INACTIVE". That is exactly how it went
+          # unnoticed for three days from 2026-11-24. If the secret is absent the
+          # value is empty and the behaviour is the same — no dispatch, never a
+          # wrong one.
+          STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
         run: |
           set -o pipefail
           # No --force: the script applies its own Melbourne-time gate, so a fire
