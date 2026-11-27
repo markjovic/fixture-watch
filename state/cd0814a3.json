@@ -125,7 +125,7 @@
       "opp": "B13 Maroondah Magic 1",
       "oppId": "43878738",
       "home": false,
-      "st": "UPCOMING",
+      "st": "IN_PROGRESS",
       "gid": "7d0c2383",
       "gn": "Friday U13 Boys A",
       "rn": "Round 8",
@@ -162,7 +162,7 @@
   },
   "rounds": {
     "gid": "7d0c2383",
-    "fetchedAt": "2026-11-24T09:31:50.686Z",
+    "fetchedAt": "2026-11-27T07:00:21.180Z",
     "list": [
       {
         "id": "0a59f82d",
@@ -311,9 +311,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-12-11",
-    "checkedAt": "2026-11-24T09:31:50.686Z"
+    "checkedAt": "2026-11-27T07:00:21.180Z"
   },
   "firstSeenAt": "2026-11-15T09:15:43.992Z",
-  "lastChangeAt": "2026-11-20T07:30:17.864Z",
-  "lastCheckedAt": "2026-11-24T09:31:50.686Z"
+  "lastChangeAt": "2026-11-27T07:00:21.181Z",
+  "lastCheckedAt": "2026-11-27T07:00:21.181Z"
 }
