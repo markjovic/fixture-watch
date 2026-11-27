@@ -87,6 +87,22 @@ global.fetch = async function (url, opts) {
     return makeRes(400, JSON.stringify({ status: 0, errors: ['harness: rejected on purpose'] }));
   }
 
+  // ── GitHub workflow dispatch (fast publish on FINAL) ──────────────────────
+  if (u.indexOf('api.github.com') !== -1) {
+    const body = JSON.parse(String(opts.body || '{}'));
+    const m = u.match(/repos\/(.+?)\/actions\/workflows\/(.+?)\/dispatches/);
+    const entry = {
+      kind: 'dispatch',
+      repo: m ? m[1] : null, workflow: m ? m[2] : null,
+      ref: body.ref, inputs: body.inputs || {},
+      auth: String(headers.Authorization || ''),
+    };
+    log(entry);
+    const mode = (SCENARIO.dispatch && SCENARIO.dispatch.mode) || 'ok';
+    if (mode === 'ok') return makeRes(204, '');
+    return makeRes(422, JSON.stringify({ message: 'harness: refused on purpose' }));
+  }
+
   // ── PlayHQ ────────────────────────────────────────────────────────────────
   const body   = JSON.parse(String(opts.body || '{}'));
   const op     = body.operationName;

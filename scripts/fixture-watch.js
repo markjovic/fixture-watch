@@ -26,6 +26,31 @@
 // different thing from an application 403, because they mean different things and
 // need different responses.
 //
+// ─── FAST PUBLISH ON FINAL ───────────────────────────────────────────────────
+// When a watched team's game flips to FINAL, dispatch StatTrack's
+// publish-final-game.yml so the result, the box score and the players' profile
+// stats are live within minutes instead of waiting for the 01:00 nightly.
+//
+// ⚠️ THIS WAS DELETED BY A WHOLESALE REWRITE ON 2026-11-24 AND RESTORED ON
+//    2026-11-27. It was live from 2026-11-23 (commit 6f09a113) and three uploads
+//    on the 24th replaced the file without it, so every FINAL in between waited
+//    for the nightly. If you are about to rewrite this file rather than patch it,
+//    diff against `main` first.
+//
+// ⚠️ ABSENT CONFIG MEANS OFF. No `publishOnFinal` block, or no
+//    STATTRACK_DISPATCH_TOKEN in the environment, and this does nothing at all.
+//    Failure direction is always "no dispatch", never "a dispatch we did not mean".
+//
+// ⚠️ IT IS PER SPORT. publish-final-game.yml lives in the BASKETBALL repo and
+//    takes a basketball season, grade and round. A footy FINAL dispatched there
+//    would send afl ids into sports-players-stats. So the config hangs off the
+//    sport, not the run, and a sport without one never dispatches.
+//
+// ⚠️ Scores are still NOT watched (§6 of the project notes). This hangs off `st`,
+//    which has been in FIELDS and diffed since the first version — a game going
+//    PENDING/UPCOMING → FINAL is a STATUS change, not a score change, and it fires
+//    once per game rather than once per score update.
+//
 // ─── SPORTS ARE CONFIGURATION, NOT CODE ──────────────────────────────────────
 // watch.json carries a `sports` block; each sport names a PlayHQ tenant and the
 // shape of its alert link. Footy was added on 2026-11-24 and needed no new fixture
@@ -183,13 +208,45 @@ const SPORTS = {};
     : [[LEGACY_SPORT, { tenant: LEGACY_TENANT, link: { kind: 'stattrack', base: cfg.stattrackBase || null } }]];
   for (const [key, s] of entries) {
     const sp = (s && typeof s === 'object') ? s : {};
+    // publishOnFinal belongs to the SPORT. A top-level block is read only for the
+    // legacy sport, the same fallback the tenant and link keys use, so the
+    // pre-footy config keeps working untouched.
+    const rawPub = (sp.publishOnFinal && typeof sp.publishOnFinal === 'object') ? sp.publishOnFinal
+                 : (key === LEGACY_SPORT && cfg.publishOnFinal && typeof cfg.publishOnFinal === 'object') ? cfg.publishOnFinal
+                 : null;
     SPORTS[key] = {
       key,
       label:  sp.label || (key.charAt(0).toUpperCase() + key.slice(1)),
       tenant: sp.tenant || LEGACY_TENANT,
       link:   sp.link || (key === LEGACY_SPORT && cfg.stattrackBase ? { kind: 'stattrack', base: cfg.stattrackBase } : {}),
       orgShortCodes: sp.orgShortCodes || {},
+      publish: rawPub ? {
+        repo:      rawPub.repo ? String(rawPub.repo) : '',
+        workflow:  rawPub.workflow ? String(rawPub.workflow) : 'publish-final-game.yml',
+        ref:       rawPub.ref ? String(rawPub.ref) : 'main',
+        // A regrade can flip a whole block of games at once. Grouping by
+        // (grade, round) collapses most of that, but a run that wants more rounds
+        // than this dispatches NONE and says so: the nightly already handles bulk
+        // correctly, and a burst of dispatches from a watcher is the kind of thing
+        // that is noticed only after it has happened.
+        maxRounds: Number.isFinite(rawPub.maxRoundsPerPass) ? rawPub.maxRoundsPerPass : 6,
+        enabled:   rawPub.enabled !== false,
+      } : null,
     };
+  }
+}
+
+// The PAT. GITHUB_TOKEN cannot create a workflow run in another repository, so a
+// token with actions:write on the target repo is required.
+const PUB_TOKEN = process.env.STATTRACK_DISPATCH_TOKEN || '';
+for (const key of Object.keys(SPORTS)) {
+  const sp = SPORTS[key];
+  if (!sp.publish) continue;
+  sp.publish.active = !!(sp.publish.enabled && sp.publish.repo && PUB_TOKEN);
+  if (!sp.publish.active) {
+    console.log(`[fixture-watch] ${sp.label}: publish-on-FINAL configured but INACTIVE — ${!sp.publish.repo ? 'publishOnFinal.repo is empty' : !PUB_TOKEN ? 'STATTRACK_DISPATCH_TOKEN is not set' : 'publishOnFinal.enabled is false'}.`);
+  } else {
+    console.log(`[fixture-watch] ${sp.label}: publish-on-FINAL ACTIVE → ${sp.publish.repo} ${sp.publish.workflow}@${sp.publish.ref} (max ${sp.publish.maxRounds} round(s) per pass)`);
   }
 }
 let SPORT_KEYS = Object.keys(SPORTS);
@@ -679,6 +736,18 @@ function describeGame(g) {
 // a ReferenceError that `node --check` cannot see.
 const TERMINAL = new Set(['FINAL', 'CANCELLED', 'ABANDONED', 'FORFEIT']);
 
+// ⚠️ THE FOOTY DASHBOARD ONLY HOLDS GAMES THAT HAVE BEEN PLAYED.
+// It stamps a match record — and the team ids on it — only on a game PlayHQ has
+// marked FINAL, so no link into a season resolves before that season's round 1,
+// whatever keys the link carries. This is the gate that decides whether a footy
+// alert carries a link at all; see lib/team-links.cjs.
+//
+// FINAL ONLY, deliberately narrower than TERMINAL above. A cancelled, abandoned or
+// forfeited game is terminal for OUR diffing purposes but produces no result for
+// the dashboard to store, so it must not be read as "the dashboard knows this team".
+const hasFinalGame = (games) =>
+  Object.values(games || {}).some(g => String(g && g.st || '').toUpperCase() === 'FINAL');
+
 const isHistorical = (g, nowMs) => {
   if (!g) return false;
   if (TERMINAL.has(String(g.st || '').toUpperCase())) return true;
@@ -713,6 +782,66 @@ function diffFixture(prevGames, nextGames, nowMs = Date.now()) {
   const regrade = prevGids.length && nextGids.length && prevGids.join(',') !== nextGids.join(',');
 
   return { changes, regrade, prevGids, nextGids };
+}
+
+// ─── Dispatch to StatTrack ───────────────────────────────────────────────────
+// fetch() only, same as every other call in this file. GITHUB_TOKEN cannot create
+// a workflow run across repositories, so this needs a PAT with actions:write on
+// the target repo, supplied as STATTRACK_DISPATCH_TOKEN.
+//
+// 204 is the ONLY success. Anything else is reported and treated as a failure by
+// the caller, which then holds this team's state back so the next pass re-detects
+// the same FINAL and tries again. A lost dispatch must cost one re-ask, never a
+// result that silently never publishes.
+async function dispatchPublish(pub, { season, grade, round, games }) {
+  const url = `https://api.github.com/repos/${pub.repo}/actions/workflows/${pub.workflow}/dispatches`;
+  const payload = {
+    ref: pub.ref,
+    inputs: {
+      season: String(season), grade: String(grade), round: String(round),
+      games: games.join(','), source: 'fixture-watch',
+    },
+  };
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept':               'application/vnd.github+json',
+        'Authorization':        `Bearer ${PUB_TOKEN}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type':         'application/json',
+        'User-Agent':           'fixture-watch',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    return { ok: false, detail: `network: ${err && err.message ? err.message : err}` };
+  }
+  if (res.status === 204) return { ok: true, detail: '204' };
+  let text = '';
+  try { text = (await res.text() || '').slice(0, 300); } catch (_) {}
+  return { ok: false, detail: `HTTP ${res.status}${text ? ` — ${text}` : ''}` };
+}
+
+// A game that has just become FINAL: present in both snapshots (or newly added)
+// with a status that was not FINAL before and is now. Grouped by (grade, round)
+// because that is what publish-final-game.yml takes — one dispatch covers every
+// game in the round, so a whole round finishing costs ONE call, not five.
+function finalTransitions(prevGames, changes) {
+  const byRound = new Map();
+  for (const c of changes) {
+    if (c.type !== 'changed' && c.type !== 'added') continue;
+    const g = c.game || {};
+    if (g.st !== 'FINAL') continue;
+    const before = (prevGames || {})[c.id];
+    if (before && before.st === 'FINAL') continue;   // already final — nothing new
+    if (!g.gid || !g.rn) continue;                   // cannot be addressed without both
+    const key = `${g.gid}|${g.rn}`;
+    if (!byRound.has(key)) byRound.set(key, { grade: g.gid, round: g.rn, games: [] });
+    byRound.get(key).games.push(c.id);
+  }
+  return [...byRound.values()];
 }
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -835,18 +964,25 @@ function writePlayerSport(playerState, p, sport, data) {
   const pendingWrites  = new Map();   // key -> { file, data }
   const pendingDeletes = new Map();   // key -> { file, tid, alertKey }
   const pendingPlayers = new Map();   // key -> { player, sport, data }
+  const pendingDispatch = new Map();  // key -> { pub, rounds:[{ season, grade, round, games[] }] }
 
   const todayMs = Date.now();
 
   // The alert link for a registration or a team-meta block, in this sport's shape.
   // Returns null freely — see lib/team-links.cjs: omit rather than approximate.
-  const linkFor = (sp, reg) => teamUrlFor(sp, {
-    tid:        reg.tid,
-    sid:        reg.sid,
-    teamName:   reg.name,
-    gradeName:  reg.currentGrade || reg.regGrade || null,
-    seasonName: reg.seasonName,
-    orgId:      reg.assocId,
+  //
+  // `games` is whatever this run knows about the team's fixture: the freshly
+  // normalised games in phase 2, the stored ones for a team that has just left a
+  // profile, and NOTHING for a brand new registration — which is correct, because a
+  // brand new registration is exactly the case the footy dashboard cannot resolve.
+  const linkFor = (sp, reg, games) => teamUrlFor(sp, {
+    tid:           reg.tid,
+    sid:           reg.sid,
+    teamName:      reg.name,
+    gradeName:     reg.currentGrade || reg.regGrade || null,
+    seasonName:    reg.seasonName,
+    orgId:         reg.assocId,
+    hasPlayedGame: hasFinalGame(games),
   });
 
   // ── Phase 1 · profiles, one sport at a time ───────────────────────────────
@@ -921,21 +1057,28 @@ function writePlayerSport(playerState, p, sport, data) {
             key: stKey,
             title: `[${sp.label}] ${p.name || 'Player'} — NEW TEAM`,
             lines: [`${c.name || tid}`, `${c.club || ''} · ${c.seasonName || ''} ${c.regGrade ? `· ${c.regGrade}` : ''}`.trim(), `${c.comp || ''}`].filter(Boolean),
-            url: linkFor(sp, c), urlTitle: urlTitleFor(sp), priority: 1,
+            // No fixture has been fetched for a team we have only just seen, so a
+            // footy link is correctly omitted: a brand new registration is precisely
+            // what the dashboard cannot resolve.
+            url: linkFor(sp, c, null), urlTitle: urlTitleFor(sp), priority: 1,
           });
         }
         for (const tid of vanished) {
           const c = prev.teams[tid] || {};
+          // The team has gone from the profile, so there is nothing to fetch — but
+          // the state file still holds its last known fixture, which is what decides
+          // whether a link can resolve.
+          const f    = teamStateFile(tid);
+          const gone = fs.existsSync(f) ? readJson(f, null) : null;
           alerts.push({
             key: stKey,
             title: `[${sp.label}] ${p.name || 'Player'} — TEAM GONE`,
             lines: [`${c.name || tid} is no longer on the profile`, `${c.club || ''} · ${c.seasonName || ''}`.trim(), 'Watching has stopped for this team.'].filter(Boolean),
-            url: linkFor(sp, c), urlTitle: urlTitleFor(sp), priority: 1,
+            url: linkFor(sp, c, gone && gone.games), urlTitle: urlTitleFor(sp), priority: 1,
           });
           // STOP: drop the state file — but only once the alert has been delivered,
           // or a failed send would stop the watching AND never say so.
-          const f = teamStateFile(tid);
-          if (fs.existsSync(f)) pendingDeletes.set(`${stKey}|${tid}`, { file: f, tid, alertKey: stKey });
+          if (gone) pendingDeletes.set(`${stKey}|${tid}`, { file: f, tid, alertKey: stKey });
         }
       }
 
@@ -1127,7 +1270,7 @@ function writePlayerSport(playerState, p, sport, data) {
         currentGid: f.team?.grade?.id || null,
         currentGrade: f.team?.grade?.name || null,
       };
-      const url      = linkFor(sp, teamMeta);
+      const url      = linkFor(sp, teamMeta, games);
       const urlTitle = urlTitleFor(sp);
       const who      = [...item.players].map(playerName).join(', ');
 
@@ -1212,6 +1355,27 @@ function writePlayerSport(playerState, p, sport, data) {
         console.log(`     no change (${count} game(s))`);
       }
 
+      // ── Queue a fast publish for anything that just went FINAL ──────────────
+      // Only reachable on the DIFF path. A team's first pass returns above, so a
+      // baseline never dispatches — otherwise every past result in the fixture
+      // would fire one the first time a team is seen.
+      if (sp.publish && sp.publish.active) {
+        const sid    = teamMeta && teamMeta.sid;
+        const rounds = finalTransitions(state.games || {}, changes);
+        if (rounds.length && !sid) {
+          console.log(`     ⚠ ${rounds.length} round(s) went FINAL but this team's state carries no season id — cannot dispatch.`);
+        } else if (rounds.length > sp.publish.maxRounds) {
+          console.log(`     ⚠ ${rounds.length} round(s) went FINAL in one pass (limit ${sp.publish.maxRounds}) — dispatching NONE.`);
+          console.log('       A block that large is a regrade or a backlog, which the nightly already handles correctly.');
+          failures.push(`${sp.label} · ${teamMeta.name || tid}: ${rounds.length} rounds went FINAL at once — fast publish skipped, the nightly will pick them up`);
+        } else if (rounds.length) {
+          for (const r of rounds) {
+            console.log(`     → FINAL: grade ${r.grade} "${r.round}" (${r.games.join(', ')}) — queued for fast publish`);
+          }
+          pendingDispatch.set(`t:${tid}`, { pub: sp.publish, rounds: rounds.map(r => ({ season: sid, ...r })) });
+        }
+      }
+
       const changed = changes.length > 0 || regrade || (prevCount > 0 && count === 0);
       {
         const next = {
@@ -1289,6 +1453,28 @@ function writePlayerSport(playerState, p, sport, data) {
   if (!DRY_RUN) {
     for (const [key, w] of pendingWrites) {
       if (failedKeys.has(key)) { held++; console.log(`  ↺ holding back state for ${key} — its alert did not send, so the next run re-detects and re-alerts`); continue; }
+      // The dispatch goes BEFORE the state write, for exactly the reason the
+      // alerts do: writing first baselines the FINAL, so a refused dispatch would
+      // never be retried and the result would quietly never publish early.
+      const toDispatch = pendingDispatch.get(key);
+      if (toDispatch && toDispatch.rounds.length) {
+        let allOk = true;
+        for (const d of toDispatch.rounds) {
+          const r = await dispatchPublish(toDispatch.pub, d);
+          if (r.ok) {
+            console.log(`  ⇢ dispatched ${toDispatch.pub.workflow}: ${d.season} ${d.grade} "${d.round}" (${d.games.length} game(s))`);
+          } else {
+            allOk = false;
+            console.log(`  ✖ dispatch FAILED for ${d.season} ${d.grade} "${d.round}": ${r.detail}`);
+            failures.push(`${toDispatch.pub.workflow} dispatch failed (${d.grade} ${d.round}): ${r.detail}`);
+          }
+        }
+        if (!allOk) {
+          held++;
+          console.log(`  ↺ holding back state for ${key} — a dispatch failed, so the next run re-detects the FINAL and re-dispatches`);
+          continue;
+        }
+      }
       writeJson(w.file, w.data); touched.add(w.file);
     }
     for (const [, d] of pendingDeletes) {

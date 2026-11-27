@@ -33,6 +33,7 @@ const isoD  = (ms) => new Date(ms).toISOString().slice(0, 10);
 const FUT1  = isoD(Date.now() + 30 * DAY);
 const FUT2  = isoD(Date.now() + 37 * DAY);
 const PAST  = isoD(Date.now() - 30 * DAY);
+const TODAY = isoD(Date.now());
 
 const UUID  = '0afc7690-c2db-4644-b039-af1c34520af3';
 const BB    = 'basketball-victoria';
@@ -62,6 +63,7 @@ function cfgFor(sports) {
     maxAlertChars: 1000,
   };
 }
+const PUB = { enabled: true, repo: 'markjovic/sports-players-stats', workflow: 'publish-final-game.yml', ref: 'main', maxRoundsPerPass: 6 };
 const SPORT_BB = { basketball: { label: 'Basketball', tenant: BB, link: { kind: 'stattrack', base: ST_BASE, urlTitle: 'Open in StatTrack' } } };
 const SPORT_FOOTY = {
   label: 'Footy', tenant: AFL,
@@ -165,6 +167,7 @@ function run(spec) {
       NODE_OPTIONS: `--require ${path.join(REPO, 'scripts', 'test', 'mock-playhq.cjs')}`,
       FW_SCENARIO: scenFile, FW_CALLLOG: logFile, FW_FAST_SLEEP: '1',
       PUSHOVER_TOKEN: 'harness-token', PUSHOVER_USER: 'harness-user',
+      STATTRACK_DISPATCH_TOKEN: 'harness-pat',
     },
   });
 
@@ -173,6 +176,7 @@ function run(spec) {
     code: r.status, stdout: r.stdout || '', stderr: r.stderr || '', calls,
     pushes: calls.filter(c => c.kind === 'pushover'),
     sessions: calls.filter(c => c.kind === 'session'),
+    dispatches: calls.filter(c => c.kind === 'dispatch'),
     authed: calls.filter(c => c.kind === 'profile' || c.kind === 'fixture' || c.kind === 'grade'),
     repo,
     stateExists: (f) => fs.existsSync(path.join(repo, 'state', f)),
@@ -261,6 +265,18 @@ const bbFixtureTwoGames = {
   ] }) },
 };
 const bbGrade3Rounds = { [G1]: { data: gradeData({ gid: G1, name: 'B13 - 1', rounds: roundList(3, 0) }) } };
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  FAST PUBLISH ON FINAL — deleted by a wholesale rewrite 2026-11-24,
+//  restored 2026-11-27. These exist so it cannot be lost silently again.
+// ═══════════════════════════════════════════════════════════════════════════
+const BB_PUB = { basketball: { ...SPORT_BB.basketball, publishOnFinal: PUB } };
+const finalFlipState = () => ({ [`${T1}.json`]: teamState({ tid: T1, name: 'Spirit Magic 3', gid: G1, lastGameDate: TODAY, games: {
+  g1: ng({ d: TODAY, st: 'SCHEDULED', rn: 'Round 7', gid: G1 }),
+} }) });
+const finalFlipFixture = (rounds) => ({ [T1]: { data: fixtureData({ tid: T1, gradeId: G1, gradeName: 'B13 - 1', rounds }) } });
+const roundWith = (id, name, gs) => round({ id, name, gradeId: G1, gradeName: 'B13 - 1', games: gs });
+const finalGame = (id, date) => game({ id, date, status: 'FINAL', homeId: T1, homeName: 'Spirit Magic 3', awayId: 'opp-1', awayName: 'Rivals' });
 
 const SCENARIOS = [
 
@@ -659,6 +675,136 @@ const SCENARIOS = [
     ck('the link is built from the stored FINAL game', !!gone && gone.url === `${FOOTY_BASE}#y=2027&c=EFNL&a=U12&t=${FT}`, gone ? String(gone.url) : '');
     ck('the state file is removed', !c.stateExists(`${FT}.json`));
     ck('no fixture call was made', c.calls.filter(x => x.kind === 'fixture').length === 0);
+  },
+},
+
+{
+  name: '21 FINAL flip — ONE dispatch, with the season, grade and round name',
+  cfg: cfgFor(BB_PUB),
+  state: finalFlipState(),
+  net: { tenants: { [BB]: { profile: bbProfileOneTeam, grade: bbGrade3Rounds,
+    fixture: finalFlipFixture([roundWith('r1', 'Round 7', [finalGame('g1', TODAY)])]) } } },
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-2000)}`);
+    ck('exactly one dispatch', c.dispatches.length === 1, JSON.stringify(c.dispatches));
+    const d = c.dispatches[0] || {};
+    ck('to the StatTrack repo', d.repo === 'markjovic/sports-players-stats', String(d.repo));
+    ck('to publish-final-game.yml', d.workflow === 'publish-final-game.yml', String(d.workflow));
+    ck('on ref main', d.ref === 'main', String(d.ref));
+    ck('season is the team season id', d.inputs && d.inputs.season === 'season-1', JSON.stringify(d.inputs));
+    ck('grade is the grade ID', d.inputs && d.inputs.grade === G1, JSON.stringify(d.inputs));
+    ck('round is the round NAME, not an id', d.inputs && d.inputs.round === 'Round 7', JSON.stringify(d.inputs));
+    ck('the flipped game is reported', d.inputs && d.inputs.games === 'g1', JSON.stringify(d.inputs));
+    ck('source names the dispatcher', d.inputs && d.inputs.source === 'fixture-watch');
+    ck('the PAT was sent', d.auth === 'Bearer harness-pat', String(d.auth));
+    ck('state was written after the dispatch', c.stateOf(`${T1}.json`).games.g1.st === 'FINAL');
+    ck('the log says it dispatched', /dispatched publish-final-game\.yml/.test(c.stdout));
+  },
+},
+
+{
+  name: '22 dispatch refused — the state is HELD BACK so the next pass retries',
+  cfg: cfgFor(BB_PUB),
+  state: finalFlipState(),
+  net: { dispatch: { mode: 'refuse' }, tenants: { [BB]: { profile: bbProfileOneTeam, grade: bbGrade3Rounds,
+    fixture: finalFlipFixture([roundWith('r1', 'Round 7', [finalGame('g1', TODAY)])]) } } },
+  assert(c, ck) {
+    ck('exit 1', c.code === 1, `exit ${c.code}`);
+    ck('the dispatch was attempted', c.dispatches.length === 1);
+    ck('state still says SCHEDULED', c.stateOf(`${T1}.json`).games.g1.st === 'SCHEDULED', 'a baselined FINAL would never be retried');
+    ck('the log says it was held back', /holding back state .*a dispatch failed/.test(c.stdout), c.stdout.slice(-900));
+    // ⚠️ AND IT DOES NOT BUZZ THE PHONE. The dispatch runs in phase 5, AFTER the
+    // phase 4 failure alert has already been decided, so a refused dispatch makes
+    // the run RED and writes nothing — but sends no Pushover. That is the
+    // behaviour as restored from 6f09a113, asserted here rather than quietly
+    // changed. The cost is bounded: the state is held, the next pass retries, and
+    // the 01:00 nightly publishes regardless. You would notice it only as a red run.
+    ck('no watcher-failed push — phase 4 has already run', !c.pushes.some(p => p.title === 'watcher failed'), JSON.stringify(c.titles()));
+    ck('but the failure IS in the log', /dispatch FAILED/.test(c.stdout), c.stdout.slice(-900));
+  },
+},
+
+{
+  name: '23 too many rounds at once — dispatch NONE, and say so',
+  cfg: cfgFor({ basketball: { ...SPORT_BB.basketball, publishOnFinal: { ...PUB, maxRoundsPerPass: 1 } } }),
+  state: { [`${T1}.json`]: teamState({ tid: T1, name: 'Spirit Magic 3', gid: G1, lastGameDate: TODAY, games: {
+    g1: ng({ d: TODAY, st: 'SCHEDULED', rn: 'Round 7', gid: G1 }),
+    g2: ng({ d: TODAY, st: 'SCHEDULED', rn: 'Round 8', gid: G1 }),
+  } }) },
+  net: { tenants: { [BB]: { profile: bbProfileOneTeam, grade: bbGrade3Rounds, fixture: finalFlipFixture([
+    roundWith('r1', 'Round 7', [finalGame('g1', TODAY)]),
+    roundWith('r2', 'Round 8', [finalGame('g2', TODAY)]),
+  ]) } } },
+  assert(c, ck) {
+    ck('exit 1 — the refusal is a failure, not a silent trim', c.code === 1, `exit ${c.code}`);
+    ck('NOTHING was dispatched', c.dispatches.length === 0, JSON.stringify(c.dispatches));
+    ck('the log says dispatching NONE', /dispatching NONE/.test(c.stdout), c.stdout.slice(-1200));
+    ck('the failure names the nightly as the fallback', c.pushes.some(p => p.title === 'watcher failed' && /nightly will pick them up/.test(p.message)));
+  },
+},
+
+{
+  name: '24 a first pass never dispatches, however many FINALs it holds',
+  cfg: cfgFor(BB_PUB), state: {},
+  net: { tenants: { [BB]: { profile: bbProfileOneTeam, grade: bbGrade3Rounds, fixture: finalFlipFixture([
+    roundWith('r1', 'Round 1', [finalGame('g1', PAST)]),
+    roundWith('r2', 'Round 2', [finalGame('g2', PAST)]),
+  ]) } } },
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('NO dispatch from a baseline', c.dispatches.length === 0, JSON.stringify(c.dispatches));
+    ck('it still baselined', !!c.stateOf(`${T1}.json`));
+  },
+},
+
+{
+  name: '25 a FOOTY final NEVER dispatches — the publish repo is basketball-only',
+  cfg: cfgFor({ ...BB_PUB, footy: SPORT_FOOTY }),
+  state: {
+    [`${FT}.json`]: teamState({ tid: FT, sport: 'footy', name: 'Norwood U12 Purple', gid: FG, gradeName: 'U12 - B', orgId: '383836bb-1111-2222-3333-444455556666', lastGameDate: TODAY, games: {
+      fg1: ng({ d: TODAY, st: 'SCHEDULED', gid: FG, gn: 'U12 - B', rn: 'Round 7' }),
+    } }),
+  },
+  net: { tenants: {
+    [BB]:  { profile: { [UUID]: { data: { publicProfileTeams: [] } } } },
+    [AFL]: {
+      profile: { [UUID]: { data: { publicProfileTeams: [pteam({
+        id: FT, name: 'Norwood U12 Purple', club: 'Norwood', gradeId: FG, gradeName: 'U12 - B',
+        sid: 'footy-season-2027', seasonName: '2027', endDate: null,
+        orgId: '383836bb-1111-2222-3333-444455556666',
+      })] } } },
+      fixture: { [FT]: { data: fixtureData({ tid: FT, gradeId: FG, gradeName: 'U12 - B', sid: 'footy-season-2027', seasonName: '2027', orgId: '383836bb-1111-2222-3333-444455556666', rounds: [
+        round({ id: 'fr7', name: 'Round 7', gradeId: FG, gradeName: 'U12 - B', games: [game({ id: 'fg1', date: TODAY, status: 'FINAL', homeId: FT, homeName: 'Norwood U12 Purple', awayId: 'fopp', awayName: 'Vermont U12 Blue' })] }),
+      ] }) } },
+      grade: { [FG]: { data: gradeData({ gid: FG, name: 'U12 - B', rounds: roundList(7, 6) }) } },
+    },
+  } },
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-2000)}`);
+    ck('NO dispatch — footy has no publishOnFinal', c.dispatches.length === 0, JSON.stringify(c.dispatches));
+    ck('the footy change still alerted', c.pushes.some(p => /^\[Footy\]/.test(p.title)), JSON.stringify(c.titles()));
+    ck('and the footy state still advanced', c.stateOf(`${FT}.json`).games.fg1.st === 'FINAL');
+  },
+},
+
+{
+  name: '26 a game already PAST when it goes FINAL is suppressed — nightly territory',
+  cfg: cfgFor(BB_PUB),
+  state: { [`${T1}.json`]: teamState({ tid: T1, name: 'Spirit Magic 3', gid: G1, lastGameDate: PAST, games: {
+    g1: ng({ d: PAST, st: 'SCHEDULED', rn: 'Round 7', gid: G1 }),
+  } }) },
+  net: { tenants: { [BB]: { profile: bbProfileOneTeam, grade: bbGrade3Rounds,
+    fixture: finalFlipFixture([roundWith('r1', 'Round 7', [finalGame('g1', PAST)])]) } } },
+  assert(c, ck) {
+    // ⚠️ DOCUMENTING BEHAVIOUR, NOT ENDORSING IT. The past-game suppression added
+    // 2026-11-24 ignores field changes on a game historical in BOTH snapshots, and
+    // a late-entered result is exactly that. Saturday results are unaffected — a
+    // game is not historical until the end of its date in UTC, which is late
+    // morning the next day in Melbourne — so this only bites a result entered days
+    // late, which the 01:00 nightly already handles.
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('no dispatch for a late-entered result', c.dispatches.length === 0, JSON.stringify(c.dispatches));
+    ck('and no alert either — history is not news', c.pushes.length === 0, JSON.stringify(c.titles()));
   },
 },
 
