@@ -1,0 +1,62 @@
+# .github/workflows/nc-probe-reachability.yml
+#
+# NETBALL CONNECT — ACCEPTANCE TEST 0: RUNNER REACHABILITY.
+#
+# Dispatch only, and deliberately the only Netball Connect thing that exists until
+# it passes. Squadi 403s non-browser calls to its public livescores API from cloud
+# IPs; every call in scripts/nc-probe-reachability.js has been verified from Mark's
+# workstation and NONE of it from a GitHub runner. If this returns 403 the whole
+# source moves to the Playwright fallback in spec §11.4 and the client is written
+# differently — so it is built and answered before anything else.
+#
+# EXPECTED:
+#   login: HTTP 200
+#   teams: 2
+#   registrations: 4/4
+#
+# ⚠️ PUBLIC REPO, PUBLIC LOGS. Those three lines and error reasons are the whole of
+# the output. The script never prints an id, a name, a token, a header or a body.
+#
+# ⚠️ HARDENING — spec §11.2.
+#   · workflow_dispatch ONLY. Never schedule, never pull_request or
+#     pull_request_target — a fork PR must never be able to reach these secrets.
+#   · Secrets are passed to the ONE step that runs the client, not job-wide.
+#   · permissions: contents: read — this probe writes nothing and commits nothing.
+#   · No upload-artifact and no cache. Nothing fetched from Netball Connect is
+#     allowed to persist anywhere.
+#
+# ⚠️ NO actions/setup-node. The repo's standing rule for api.playhq.com is that
+# setup-node changes the runner's outbound fingerprint and CloudFront then 403s
+# everything. Whether Squadi judges the client the same way is unknown, and a probe
+# whose job is to measure a WAF must not alter the thing being measured. The
+# preinstalled Node is used.
+
+name: NC Probe — runner reachability
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: login + personaldetails + registrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Node version (preinstalled — setup-node is forbidden here)
+        run: node --version
+
+      - name: Probe Netball Connect
+        env:
+          NC_EMAIL:    ${{ secrets.NC_EMAIL }}
+          NC_PASSWORD: ${{ secrets.NC_PASSWORD }}
+          NC_PLAYERS:  ${{ secrets.NC_PLAYERS }}
+        run: |
+          set -o pipefail
+          node scripts/nc-probe-reachability.js
