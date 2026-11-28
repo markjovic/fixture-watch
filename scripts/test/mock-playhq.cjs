@@ -87,6 +87,67 @@ global.fetch = async function (url, opts) {
     return makeRes(400, JSON.stringify({ status: 0, errors: ['harness: rejected on purpose'] }));
   }
 
+  // ── Netball Connect (Squadi) ──────────────────────────────────────────────
+  // A separate vendor with its own login, so it gets its own branch. Bodies are
+  // built from SCENARIO.nc so a scenario can drive the login outcome, the team
+  // list, registration paging and the Teams-tab canary independently.
+  if (u.indexOf('api-netball.squadi.com') !== -1) {
+    const nc = SCENARIO.nc || {};
+    const path = new URL(u).pathname;
+
+    if (path === '/users/users/loginWithEmailPassword') {
+      log({ kind: 'nc', call: 'login', auth: String(headers.authorization || '').slice(0, 5) });
+      const mode = nc.login || 'ok';
+      if (mode === 'waf')     return makeRes(403, WAF_BODY);
+      if (mode === 'bad')     return makeRes(401, JSON.stringify({ message: 'no' }));
+      if (mode === 'notoken') return makeRes(200, JSON.stringify({ user: { id: 1 } }));
+      if (mode === '500')     return makeRes(500, 'oops');
+      return makeRes(200, JSON.stringify({ authToken: 'NCTOKEN-abc123', user: { id: 15890708, firstName: 'Parent' }, signDate: 1 }));
+    }
+
+    if (path === '/users/api/user/personaldetails') {
+      log({ kind: 'nc', call: 'personaldetails', auth: String(headers.authorization || '') });
+      const pd = nc.personaldetails || {};
+      if (pd.status) return makeRes(pd.status, pd.status === 403 ? WAF_BODY : 'err');
+      if (pd.noCompetitions) return makeRes(200, JSON.stringify({ somethingElse: [] }));
+      const teams = (nc.teams || []).map(t => ({
+        teamId: String(t.teamId), compTeamId: Number(t.teamId),
+        teamName: t.teamName, userTeamRoles: [{ roleId: 18, roleName: 'Player' }],
+      }));
+      // One competition holding every team, which is how the real API behaves:
+      // the Spring team is filed under the Autumn competition.
+      return makeRes(200, JSON.stringify({
+        competitions: [{ competitionName: nc.competitionName || 'FRI - 2026 MENA AUTUMN 9U', teams }],
+        firstName: 'Penny', dateOfBirth: '2017-03-04', address: '1 Example St',
+      }));
+    }
+
+    if (path === '/users/api/user/registration') {
+      const body = JSON.parse(String(opts.body || '{}'));
+      const pg = body.myRegPaging || { limit: 10, offset: 0 };
+      log({ kind: 'nc', call: 'registration', offset: pg.offset, limit: pg.limit });
+      const r = nc.registrations || {};
+      if (r.status) return makeRes(r.status, r.status === 403 ? WAF_BODY : 'err');
+      if (r.noShape) return makeRes(200, JSON.stringify({ myRegistrations: { registrationDetails: [] } }));
+      const all = r.rows || [];
+      const total = typeof r.totalCount === 'number' ? r.totalCount : all.length;
+      // ⚠️ nextPage is deliberately a LIE here (10 against a totalCount of 4),
+      // exactly as the real API returns it, so a client that trusts it fails.
+      const slice = r.shortPage ? all.slice(0, Math.max(0, all.length - 1)) : all.slice(pg.offset, pg.offset + pg.limit);
+      return makeRes(200, JSON.stringify({
+        myRegistrations: { page: { nextPage: 10, prevPage: null, totalCount: total, currentPage: 1 }, registrationDetails: slice },
+        otherRegistrations: {}, childRegistrations: {},
+      }));
+    }
+
+    if (path === '/users/api/user/teams') {
+      log({ kind: 'nc', call: 'teams-tab' });
+      return makeRes(200, JSON.stringify({ page: { totalCount: nc.teamsTabTotal || 0 }, data: [] }));
+    }
+
+    return makeRes(404, 'nc: unexpected path');
+  }
+
   // ── GitHub workflow dispatch (fast publish on FINAL) ──────────────────────
   if (u.indexOf('api.github.com') !== -1) {
     const body = JSON.parse(String(opts.body || '{}'));

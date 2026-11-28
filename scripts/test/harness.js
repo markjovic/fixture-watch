@@ -25,6 +25,7 @@ const os   = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const links = require('../lib/team-links.cjs');
+const nbw   = require('../lib/netball-watch.cjs');
 
 const REPO  = path.join(__dirname, '..', '..');
 const ONLY  = process.argv.slice(2);
@@ -168,6 +169,7 @@ function run(spec) {
       FW_SCENARIO: scenFile, FW_CALLLOG: logFile, FW_FAST_SLEEP: '1',
       PUSHOVER_TOKEN: 'harness-token', PUSHOVER_USER: 'harness-user',
       STATTRACK_DISPATCH_TOKEN: 'harness-pat',
+      ...(spec.env || {}),
     },
   });
 
@@ -177,6 +179,7 @@ function run(spec) {
     pushes: calls.filter(c => c.kind === 'pushover'),
     sessions: calls.filter(c => c.kind === 'session'),
     dispatches: calls.filter(c => c.kind === 'dispatch'),
+    nc: calls.filter(c => c.kind === 'nc'),
     authed: calls.filter(c => c.kind === 'profile' || c.kind === 'fixture' || c.kind === 'grade'),
     repo,
     stateExists: (f) => fs.existsSync(path.join(repo, 'state', f)),
@@ -277,6 +280,67 @@ const finalFlipState = () => ({ [`${T1}.json`]: teamState({ tid: T1, name: 'Spir
 const finalFlipFixture = (rounds) => ({ [T1]: { data: fixtureData({ tid: T1, gradeId: G1, gradeName: 'B13 - 1', rounds }) } });
 const roundWith = (id, name, gs) => round({ id, name, gradeId: G1, gradeName: 'B13 - 1', games: gs });
 const finalGame = (id, date) => game({ id, date, status: 'FINAL', homeId: T1, homeName: 'Spirit Magic 3', awayId: 'opp-1', awayName: 'Rivals' });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NETBALL CONNECT — a third SOURCE. Spec acceptance tests 1-14.
+//  The model under test: first sighting alerts, then it is a known data point
+//  and never alerts again. Only a change to a watched field, or a disappearance,
+//  is news after that.
+// ═══════════════════════════════════════════════════════════════════════════
+const NC_ENV = {
+  NC_EMAIL:     'parent@example.com',
+  NC_PASSWORD:  'harness-pw',
+  NC_PLAYERS:   JSON.stringify([{ alias: 'p1', userId: 15890707, name: 'Penny' }]),
+  NC_STATE_KEY: 'f'.repeat(64),
+};
+const NC_CFG  = { enabled: true, checkEveryHours: 6, expected: { teams: 2, registrations: 4 }, teamsTabCanary: true, regPageLimit: 10 };
+const NC_COMP = 'FRI - 2026 MENA AUTUMN 9U';
+const ncTeams = [
+  { teamId: '227878', teamName: 'Park Orchards 9U Storm' },
+  { teamId: '256686', teamName: 'Park Orchards 9U Storm' },
+];
+const ncRegRow = (n, over) => ({
+  registrationId: `11111111-2222-3333-4444-00000000000${n}`,
+  competitionName: `MENA Club Competition ${n}`, membershipType: 'Junior Player',
+  membershipProduct: 'NetSetGo', affiliate: 'Park Orchards Netball Club',
+  paymentStatus: 'Registered', expiryDate: '2026-12-31', divisionId: 53778,
+  teamId: null, alreadyDeRegistered: 0, deRegisterId: null, isFailedRegistration: 0,
+  approvalStatusRefId: null, paidByUsers: 'A Parent Name', participantId: 99,
+  ...(over || {}),
+});
+const NC_ROWS = [1, 2, 3, 4].map(n => ncRegRow(n));
+
+const ncKeyT = (id) => nbw.stateKey(NC_ENV.NC_STATE_KEY, 'team', id);
+const ncKeyR = (id) => nbw.stateKey(NC_ENV.NC_STATE_KEY, 'reg', id);
+
+// State as it stands AFTER a successful seed, built with the same functions the
+// watcher uses so the fixtures cannot drift from the stored shape.
+function ncSeeded(mutate) {
+  const T = {}, R = {};
+  for (const t of nbw.teamRecords(ncTeams.map(x => ({ ...x, competitionName: NC_COMP, roles: 'Player' })), NC_ENV.NC_STATE_KEY)) {
+    T[t.stateKey] = { teamName: t.teamName, competitionName: t.competitionName, firstSeen: '2026-11-28' };
+  }
+  for (const r of nbw.regRecords(NC_ROWS, NC_ENV.NC_STATE_KEY)) {
+    R[r.stateKey] = {
+      competitionName: r.competitionName, membershipType: r.membershipType,
+      paymentStatus: r.paymentStatus, expiryDate: r.expiryDate, divisionId: r.divisionId,
+      hasTeam: r.hasTeam, deRegistered: r.deRegistered, deRegisterStarted: r.deRegisterStarted,
+      failed: r.failed, approvalStatusRefId: r.approvalStatusRefId, firstSeen: '2026-11-28',
+    };
+  }
+  const st = { players: { p1: { teams: T, registrations: R, teamsTabNonEmpty: false, seeded: true } },
+               lastSuccess: null, lastAttempt: null, lastError: null };
+  if (mutate) mutate(st);
+  return st;
+}
+
+// PlayHQ returns nothing in these scenarios, so any alert is netball's.
+const ncCfg = (over) => ({ ...cfgFor(SPORT_BB), netballConnect: { ...NC_CFG, ...(over || {}) } });
+const ncNet = (nc) => ({
+  tenants: { [BB]: { profile: { [UUID]: { data: { publicProfileTeams: [] } } } } },
+  nc: { teams: ncTeams, competitionName: NC_COMP, registrations: { rows: NC_ROWS, totalCount: 4 }, ...(nc || {}) },
+});
+const ncState = (st) => ({ '_netball.json': st });
 
 const SCENARIOS = [
 
@@ -805,6 +869,253 @@ const SCENARIOS = [
     ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
     ck('no dispatch for a late-entered result', c.dispatches.length === 0, JSON.stringify(c.dispatches));
     ck('and no alert either — history is not news', c.pushes.length === 0, JSON.stringify(c.titles()));
+  },
+},
+
+{
+  name: '27 netball seed — ONE summary, never an alert per existing item',
+  cfg: ncCfg(), state: {}, env: NC_ENV, net: ncNet(),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-2000)}`);
+    ck('exactly one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('it is the seed summary', /Netball Connect watch started for Penny/.test(c.pushes[0].title), c.pushes[0].title);
+    ck('it names the counts', /2 team\(s\), 4 registration\(s\)/.test(c.pushes[0].message), c.pushes[0].message);
+    ck('no "expected" warning — the counts match the spec', !/Expected 2 teams/.test(c.pushes[0].message));
+    const st = c.stateOf('_netball.json');
+    ck('state written', !!st);
+    ck('2 teams recorded', st && Object.keys(st.players.p1.teams).length === 2);
+    ck('4 registrations recorded', st && Object.keys(st.players.p1.registrations).length === 4);
+    ck('lastSuccess set', !!(st && st.lastSuccess));
+    ck('one login only', c.nc.filter(x => x.call === 'login').length === 1, JSON.stringify(c.nc.map(x => x.call)));
+  },
+},
+
+{
+  name: '28 netball steady state — a known data point never alerts again',
+  cfg: ncCfg(), state: ncState(ncSeeded()), env: NC_ENV, net: ncNet(),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('NO alerts', c.pushes.length === 0, JSON.stringify(c.titles()));
+    ck('lastSuccess updated', !!c.stateOf('_netball.json').lastSuccess);
+  },
+},
+
+{
+  name: '29 netball new team allocation — the main purpose',
+  cfg: ncCfg(), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { delete st.players.p1.teams[ncKeyT('256686')]; })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('exactly one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('it is the new-team alert', c.pushes[0].title === 'Penny - new netball team', c.pushes[0].title);
+    ck('it carries the team and competition', /Park Orchards 9U Storm/.test(c.pushes[0].message) && new RegExp(NC_COMP).test(c.pushes[0].message), c.pushes[0].message);
+    ck('and the role', /Role: Player/.test(c.pushes[0].message));
+    ck('it links to Netball Connect', c.pushes[0].url === 'https://registration.netballconnect.com');
+    ck('the team is now known', Object.keys(c.stateOf('_netball.json').players.p1.teams).length === 2);
+  },
+},
+
+{
+  name: '30 netball team renamed — clubs create a team then rename it',
+  cfg: ncCfg(), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { st.players.p1.teams[ncKeyT('256686')].teamName = 'Park Orchards 9U TBC'; })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('titled renamed', c.pushes[0].title === 'Penny - netball team renamed', c.pushes[0].title);
+    ck('old → new', c.pushes[0].message === 'Park Orchards 9U TBC → Park Orchards 9U Storm', c.pushes[0].message);
+    ck('state now holds the new name', c.stateOf('_netball.json').players.p1.teams[ncKeyT('256686')].teamName === 'Park Orchards 9U Storm');
+  },
+},
+
+{
+  name: '31 netball team removed — and only from a fetch that validated',
+  cfg: ncCfg(), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { st.players.p1.teams['deadbeefdeadbeef'] = { teamName: 'Ghost 9U', competitionName: NC_COMP, firstSeen: '2026-01-01' }; })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('titled removed', c.pushes[0].title === 'Penny - removed from netball team', c.pushes[0].title);
+    ck('names the ghost team', /Ghost 9U/.test(c.pushes[0].message), c.pushes[0].message);
+    ck('and it is gone from state', !c.stateOf('_netball.json').players.p1.teams['deadbeefdeadbeef']);
+  },
+},
+
+{
+  name: '32 netball new registration — the first sign of a new season',
+  cfg: ncCfg(), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { delete st.players.p1.registrations[ncKeyR('11111111-2222-3333-4444-000000000003')]; })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('titled new registration', c.pushes[0].title === 'Penny - new netball registration', c.pushes[0].title);
+    ck('affiliate, competition, product and status', /Park Orchards Netball Club/.test(c.pushes[0].message) && /NetSetGo - Junior Player/.test(c.pushes[0].message) && /Status: Registered/.test(c.pushes[0].message), c.pushes[0].message);
+    ck('expiry in Australian format', /valid until 31\/12\/2026/.test(c.pushes[0].message), c.pushes[0].message);
+  },
+},
+
+{
+  name: '33 netball registration changed — a watched field moved',
+  cfg: ncCfg(), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { st.players.p1.registrations[ncKeyR('11111111-2222-3333-4444-000000000001')].paymentStatus = 'Pending'; })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('titled updated', c.pushes[0].title === 'Penny - netball registration updated', c.pushes[0].title);
+    ck('names the field and both values', /paymentStatus: Pending → Registered/.test(c.pushes[0].message), c.pushes[0].message);
+  },
+},
+
+{
+  name: '34 netball registration gains a team — its own headline',
+  cfg: ncCfg(), env: NC_ENV,
+  net: ncNet({ registrations: { rows: [ncRegRow(1, { teamId: '256686' }), ...NC_ROWS.slice(1)], totalCount: 4 } }),
+  state: ncState(ncSeeded()),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('one alert', c.pushes.length === 1, JSON.stringify(c.titles()));
+    ck('the title says it has a team', c.pushes[0].title === 'Penny - netball registration now has a team', c.pushes[0].title);
+    ck('hasTeam false → true', /hasTeam: false → true/.test(c.pushes[0].message), c.pushes[0].message);
+    ck('⚠️ and the teamId is NOT in the message', !/256686/.test(c.pushes[0].message), c.pushes[0].message);
+    ck('nor in state', !JSON.stringify(c.stateOf('_netball.json')).includes('256686'));
+  },
+},
+
+{
+  name: '35 netball paging — driven by totalCount, never by nextPage',
+  cfg: ncCfg({ regPageLimit: 2 }), env: NC_ENV, net: ncNet(), state: ncState(ncSeeded()),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    const pages = c.nc.filter(x => x.call === 'registration');
+    ck('two pages were fetched', pages.length === 2, JSON.stringify(pages));
+    ck('offsets 0 then 2', pages[0].offset === 0 && pages[1].offset === 2, JSON.stringify(pages));
+    // The mock returns nextPage:10 against totalCount:4, exactly as the real API
+    // does. A client that trusted it would keep paging; this one stops at 4.
+    ck('NO alerts — all four were already known', c.pushes.length === 0, JSON.stringify(c.titles()));
+  },
+},
+
+{
+  name: '36 netball short page — INCOMPLETE is an error, never three removals',
+  cfg: ncCfg(), env: NC_ENV, state: ncState(ncSeeded()),
+  net: ncNet({ registrations: { rows: NC_ROWS, totalCount: 4, shortPage: true } }),
+  assert(c, ck) {
+    ck('exit 1', c.code === 1, `exit ${c.code}`);
+    ck('NO "removed" alerts', !c.pushes.some(p => /removed/i.test(p.title)), JSON.stringify(c.titles()));
+    ck('one error alert', c.pushes.some(p => p.title === 'fixture-watch: Netball Connect error'), JSON.stringify(c.titles()));
+    ck('it says incomplete', c.pushes.some(p => /got 3 of 4 - incomplete/.test(p.message)), JSON.stringify(c.pushes.map(p => p.message)));
+    ck('the registrations are untouched', Object.keys(c.stateOf('_netball.json').players.p1.registrations).length === 4);
+  },
+},
+
+{
+  name: '37 netball bad password — one error, no retry, state untouched',
+  cfg: ncCfg(), env: NC_ENV, state: ncState(ncSeeded()), net: ncNet({ login: 'bad' }),
+  assert(c, ck) {
+    ck('exit 1', c.code === 1, `exit ${c.code}`);
+    ck('exactly ONE login attempt — a loop here risks a lockout', c.nc.filter(x => x.call === 'login').length === 1, JSON.stringify(c.nc));
+    ck('no profile or registration call followed', c.nc.filter(x => x.call !== 'login').length === 0, JSON.stringify(c.nc));
+    ck('one error alert', c.pushes.filter(p => p.title === 'fixture-watch: Netball Connect error').length === 1, JSON.stringify(c.titles()));
+    ck('it names the likely cause without echoing the password', /rejected \(wrong email\/password\?\)/.test(c.pushes[0].message) && !/harness-pw/.test(c.pushes[0].message), c.pushes[0].message);
+    const st = c.stateOf('_netball.json');
+    ck('teams and registrations untouched', Object.keys(st.players.p1.teams).length === 2 && Object.keys(st.players.p1.registrations).length === 4);
+    ck('lastError recorded so the next run stays quiet', !!(st.lastError && st.lastError.reason));
+    ck('lastSuccess NOT advanced', !st.lastSuccess);
+    ck('lastAttempt IS advanced — the cadence gate holds off the next login', !!st.lastAttempt);
+  },
+},
+
+{
+  name: '38 netball format change — one fetch fails, the other still diffs',
+  cfg: ncCfg(), env: NC_ENV,
+  net: ncNet({ personaldetails: { noCompetitions: true } }),
+  state: ncState(ncSeeded(st => { delete st.players.p1.registrations[ncKeyR('11111111-2222-3333-4444-000000000002')]; })),
+  assert(c, ck) {
+    ck('exit 1', c.code === 1, `exit ${c.code}`);
+    ck('the teams error is reported', c.pushes.some(p => /Netball Connect error/.test(p.title) && /'competitions' missing - format changed/.test(p.message)), JSON.stringify(c.pushes.map(p => p.message)));
+    ck('the registration diff STILL ran', c.pushes.some(p => p.title === 'Penny - new netball registration'), JSON.stringify(c.titles()));
+    ck('teams state untouched by the failed fetch', Object.keys(c.stateOf('_netball.json').players.p1.teams).length === 2);
+  },
+},
+
+{
+  name: '39 netball failing does NOT stop PlayHQ — and vice versa',
+  cfg: { ...cfgFor(SPORT_BB), netballConnect: NC_CFG }, env: NC_ENV,
+  state: {
+    '_netball.json': ncSeeded(),
+    [`${T1}.json`]: teamState({ tid: T1, name: 'Spirit Magic 3', gid: G1, games: { g1: ng({ d: FUT1, t: '09:00', rn: 'Round 1' }) } }),
+  },
+  net: {
+    nc: { login: 'waf' },
+    tenants: { [BB]: { profile: bbProfileOneTeam, grade: bbGrade3Rounds, fixture: {
+      [T1]: { data: fixtureData({ tid: T1, gradeId: G1, gradeName: 'B13 - 1', rounds: [
+        round({ id: 'r1', name: 'Round 1', gradeId: G1, games: [game({ id: 'g1', date: FUT1, time: '14:30:00', homeId: T1, homeName: 'Spirit Magic 3', awayId: 'opp-1', awayName: 'Rivals' })] }),
+      ] }) },
+    } } },
+  },
+  assert(c, ck) {
+    ck('exit 1 — the run is red because netball failed', c.code === 1, `exit ${c.code}`);
+    ck('the BASKETBALL alert still went out', c.pushes.some(p => /^\[Basketball\]/.test(p.title) && /time 09:00 → 14:30/.test(p.message)), JSON.stringify(c.titles()));
+    ck('and its state still advanced', c.stateOf(`${T1}.json`).games.g1.t === '14:30');
+    ck('the netball error is reported separately', c.pushes.some(p => /blocked \(WAF\)/.test(p.message)), JSON.stringify(c.pushes.map(p => p.message)));
+    ck('netball state was not advanced', !c.stateOf('_netball.json').lastSuccess);
+  },
+},
+
+{
+  name: '40 netball PUBLIC-REPO LEAK CHECK — nothing identifying in state or the log',
+  cfg: ncCfg(), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { delete st.players.p1.teams[ncKeyT('227878')]; })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('an alert did fire, so this is not vacuous', c.pushes.length === 1, JSON.stringify(c.titles()));
+    const stateText = JSON.stringify(c.stateOf('_netball.json'));
+    const haystacks = { 'committed state': stateText, 'the Actions log': c.stdout };
+    // Spec test 13. The child's NAME is allowed in a Pushover message and nowhere
+    // else — it must not reach the log or the repo.
+    const banned = ['15890707', '15890708', 'Penny', 'parent@example.com', 'BWSA',
+                    'NCTOKEN-abc123', 'harness-pw', '227878', '256686', 'dateOfBirth',
+                    'paidBy', 'A Parent Name', '1 Example St'];
+    for (const [where, hay] of Object.entries(haystacks)) {
+      for (const b of banned) ck(`${b} is not in ${where}`, hay.indexOf(b) === -1, `found "${b}"`);
+      for (const r of NC_ROWS) ck(`registrationId is not in ${where}`, hay.indexOf(r.registrationId) === -1, r.registrationId);
+    }
+    // ⚠️ THE STATE FILE MUST HOLD NO UUID AT ALL — every key in it is an HMAC.
+    ck('no UUID anywhere in the netball state', !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(stateText), stateText.slice(0, 200));
+    // The log is a weaker claim ON PURPOSE. It carries the PlayHQ player uuid,
+    // which the watcher has always printed and which is public anyway — it is in
+    // the committed watch.json and in every StatTrack URL. The netball ids above
+    // are the ones that must never appear, and they don't.
+    ck('the only uuid in the log is the public PlayHQ one',
+      (c.stdout.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) || [])
+        .every(u => u.toLowerCase() === UUID.toLowerCase()),
+      JSON.stringify([...new Set(c.stdout.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) || [])]));
+    ck('the name IS in the Pushover message, which is allowed', /Penny/.test(c.pushes[0].title), c.pushes[0].title);
+    ck('state is keyed by alias', !!c.stateOf('_netball.json').players.p1);
+  },
+},
+
+{
+  name: '41 netball Teams-tab canary — silent at zero, one message when it wakes',
+  cfg: ncCfg(), env: NC_ENV, state: ncState(ncSeeded()), net: ncNet({ teamsTabTotal: 3 }),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    ck('one canary message', c.pushes.length === 1 && /Teams tab now returns data/.test(c.pushes[0].title), JSON.stringify(c.titles()));
+    ck('and it is recorded so it never fires twice', c.stateOf('_netball.json').players.p1.teamsTabNonEmpty === true);
+  },
+},
+
+{
+  name: '42 netball cadence gate — not due means not even a login',
+  cfg: ncCfg({ checkEveryHours: 6 }), env: NC_ENV, net: ncNet(),
+  state: ncState(ncSeeded(st => { st.lastAttempt = new Date(Date.now() - 60 * 1000).toISOString(); })),
+  assert(c, ck) {
+    ck('exit 0', c.code === 0, `exit ${c.code}\n${c.stdout.slice(-1500)}`);
+    // ⚠️ The gate is on the last ATTEMPT, not the last success — otherwise a wrong
+    // password would be retried every half hour into an account lockout.
+    ck('NO Netball Connect calls at all', c.nc.length === 0, JSON.stringify(c.nc));
+    ck('the log says not due', /Netball Connect — not due/.test(c.stdout), c.stdout.slice(-600));
+    ck('no alerts', c.pushes.length === 0, JSON.stringify(c.titles()));
   },
 },
 
