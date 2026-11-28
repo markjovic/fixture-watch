@@ -1,0 +1,77 @@
+{
+  "players": {
+    "p1": {
+      "teams": {
+        "3eff9bb2057e57b9": {
+          "teamName": "Park Orchards 9U Storm",
+          "competitionName": "FRI - 2026 MENA - Club Competition AUTUMN 9 & U NetSetGo",
+          "firstSeen": "2026-11-28"
+        },
+        "0b641f3eecc3c4b5": {
+          "teamName": "Park Orchards 9U Storm",
+          "competitionName": "FRI - 2026 MENA - Club Competition AUTUMN 9 & U NetSetGo",
+          "firstSeen": "2026-11-28"
+        }
+      },
+      "registrations": {
+        "33e55f055f8d3a08": {
+          "competitionName": "MENA - Club Competition SPRING FRI 9 & U NETSETGO",
+          "membershipType": "Junior Player",
+          "paymentStatus": "Registered",
+          "expiryDate": "2026-12-31",
+          "divisionId": 53778,
+          "hasTeam": false,
+          "deRegistered": false,
+          "deRegisterStarted": false,
+          "failed": false,
+          "approvalStatusRefId": null,
+          "firstSeen": "2026-11-28"
+        },
+        "074fea3c1486299b": {
+          "competitionName": "FRI - 2026 MENA - Club Competition AUTUMN 9 & U NetSetGo",
+          "membershipType": "Junior Player",
+          "paymentStatus": "Registered",
+          "expiryDate": "2026-12-31",
+          "divisionId": 49783,
+          "hasTeam": false,
+          "deRegistered": false,
+          "deRegisterStarted": false,
+          "failed": false,
+          "approvalStatusRefId": null,
+          "firstSeen": "2026-11-28"
+        },
+        "686c8ba88237606a": {
+          "competitionName": "MENA - Club Competition SPRING FRI 9 & U NetSetGo",
+          "membershipType": "GO Participant",
+          "paymentStatus": "Registered",
+          "expiryDate": "2025-12-31",
+          "divisionId": 44400,
+          "hasTeam": false,
+          "deRegistered": false,
+          "deRegisterStarted": false,
+          "failed": false,
+          "approvalStatusRefId": null,
+          "firstSeen": "2026-11-28"
+        },
+        "ac63cf1f97897a26": {
+          "competitionName": "PONC Term 2 NetSetGo Skills Clinic 2025",
+          "membershipType": "Net Participant",
+          "paymentStatus": "Registered",
+          "expiryDate": "2025-12-31",
+          "divisionId": 43394,
+          "hasTeam": false,
+          "deRegistered": false,
+          "deRegisterStarted": false,
+          "failed": false,
+          "approvalStatusRefId": null,
+          "firstSeen": "2026-11-28"
+        }
+      },
+      "teamsTabNonEmpty": false,
+      "seeded": true
+    }
+  },
+  "lastSuccess": "2026-11-28T08:55:39.537Z",
+  "lastAttempt": "2026-11-28T08:55:39.537Z",
+  "lastError": null
+}
