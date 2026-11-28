@@ -172,6 +172,16 @@ jobs:
           # value is empty and the behaviour is the same — no dispatch, never a
           # wrong one.
           STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
+          # Netball Connect — a third SOURCE with its own login (spec §2).
+          # ⚠️ ALL FOUR ARE REQUIRED. Any one missing and the source logs
+          # "Netball Connect — INACTIVE (...)" and does nothing: the watcher still
+          # runs and still alerts on PlayHQ. That is the second time this repo has
+          # shipped a client without its env lines — see
+          # claude/fast-publish-regression-2026-11-27.md.
+          NC_EMAIL:     ${{ secrets.NC_EMAIL }}
+          NC_PASSWORD:  ${{ secrets.NC_PASSWORD }}
+          NC_PLAYERS:   ${{ secrets.NC_PLAYERS }}
+          NC_STATE_KEY: ${{ secrets.NC_STATE_KEY }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -219,6 +229,16 @@ jobs:
           # value is empty and the behaviour is the same — no dispatch, never a
           # wrong one.
           STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
+          # Netball Connect — a third SOURCE with its own login (spec §2).
+          # ⚠️ ALL FOUR ARE REQUIRED. Any one missing and the source logs
+          # "Netball Connect — INACTIVE (...)" and does nothing: the watcher still
+          # runs and still alerts on PlayHQ. That is the second time this repo has
+          # shipped a client without its env lines — see
+          # claude/fast-publish-regression-2026-11-27.md.
+          NC_EMAIL:     ${{ secrets.NC_EMAIL }}
+          NC_PASSWORD:  ${{ secrets.NC_PASSWORD }}
+          NC_PLAYERS:   ${{ secrets.NC_PLAYERS }}
+          NC_STATE_KEY: ${{ secrets.NC_STATE_KEY }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -264,6 +284,16 @@ jobs:
           # value is empty and the behaviour is the same — no dispatch, never a
           # wrong one.
           STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
+          # Netball Connect — a third SOURCE with its own login (spec §2).
+          # ⚠️ ALL FOUR ARE REQUIRED. Any one missing and the source logs
+          # "Netball Connect — INACTIVE (...)" and does nothing: the watcher still
+          # runs and still alerts on PlayHQ. That is the second time this repo has
+          # shipped a client without its env lines — see
+          # claude/fast-publish-regression-2026-11-27.md.
+          NC_EMAIL:     ${{ secrets.NC_EMAIL }}
+          NC_PASSWORD:  ${{ secrets.NC_PASSWORD }}
+          NC_PLAYERS:   ${{ secrets.NC_PLAYERS }}
+          NC_STATE_KEY: ${{ secrets.NC_STATE_KEY }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
@@ -309,6 +339,16 @@ jobs:
           # value is empty and the behaviour is the same — no dispatch, never a
           # wrong one.
           STATTRACK_DISPATCH_TOKEN: ${{ secrets.STATTRACK_DISPATCH_TOKEN }}
+          # Netball Connect — a third SOURCE with its own login (spec §2).
+          # ⚠️ ALL FOUR ARE REQUIRED. Any one missing and the source logs
+          # "Netball Connect — INACTIVE (...)" and does nothing: the watcher still
+          # runs and still alerts on PlayHQ. That is the second time this repo has
+          # shipped a client without its env lines — see
+          # claude/fast-publish-regression-2026-11-27.md.
+          NC_EMAIL:     ${{ secrets.NC_EMAIL }}
+          NC_PASSWORD:  ${{ secrets.NC_PASSWORD }}
+          NC_PLAYERS:   ${{ secrets.NC_PLAYERS }}
+          NC_STATE_KEY: ${{ secrets.NC_STATE_KEY }}
         run: |
           set -o pipefail
           INTERVAL='${{ inputs.interval }}'
