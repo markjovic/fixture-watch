@@ -49,6 +49,15 @@
     }
   ],
 
+  "_netballConnect": "Netball Connect (Squadi) — a THIRD SOURCE, not a PlayHQ tenant. Different vendor, different API, its own login, its own state file (state/_netball.json) and its own failure handling: it cannot stop the PlayHQ checks and they cannot stop it. ⚠️ NO PLAYER IDENTIFIERS LIVE HERE. The watched players, the login and the HMAC key are the NC_PLAYERS / NC_EMAIL / NC_PASSWORD / NC_STATE_KEY secrets, because this file is committed to a public repo. Absent secrets, a missing block or enabled:false and the whole source does nothing. checkEveryHours gates on the last ATTEMPT, not the last success, so a wrong password cannot be retried into an account lockout. `expected` is only used to flag an odd first run in the seeding message.",
+  "netballConnect": {
+    "enabled": true,
+    "checkEveryHours": 6,
+    "expected": { "teams": 2, "registrations": 4 },
+    "teamsTabCanary": true,
+    "regPageLimit": 10
+  },
+
   "_completeFixtureSlotsEvery": "Reduced cadence, and it applies ONLY to a team that has a game in EVERY non-finals round of its grade AND still has a game to come — nothing is left to publish for it until finals. Everything else is checked on EVERY slot, including a team missing rounds (a fixture block is being published) and a team whose last scheduled game has passed (the finals hunt). Nothing is ever stopped by this — see stopAfterSeasonEndDays. FOOTY BYES: a bye that PlayHQ does not enter as a game leaves that round uncovered for ever, so footy teams will mostly sit on the FULL cadence. That is the safe direction and the rule is NOT to be loosened.",
   "completeFixtureSlotsEvery": 4,
 
