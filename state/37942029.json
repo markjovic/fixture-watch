@@ -111,7 +111,7 @@
       "opp": "B13 Heathmont Hornets 3",
       "oppId": "ded29bf3",
       "home": true,
-      "st": "IN_PROGRESS",
+      "st": "FINAL",
       "gid": "ac2c5793",
       "gn": "Saturday U13 Boys CR",
       "rn": "Round 7",
@@ -134,7 +134,7 @@
   },
   "rounds": {
     "gid": "ac2c5793",
-    "fetchedAt": "2026-11-27T23:31:04.075Z",
+    "fetchedAt": "2026-11-28T00:00:15.584Z",
     "list": [
       {
         "id": "1d1f98e0",
@@ -277,9 +277,9 @@
     ],
     "finalsRoundsInGrade": 2,
     "lastGameDate": "2026-12-05",
-    "checkedAt": "2026-11-27T23:31:04.075Z"
+    "checkedAt": "2026-11-28T00:00:15.585Z"
   },
   "firstSeenAt": "2026-11-15T09:15:39.262Z",
-  "lastChangeAt": "2026-11-27T23:31:04.076Z",
-  "lastCheckedAt": "2026-11-27T23:31:04.076Z"
+  "lastChangeAt": "2026-11-28T00:00:15.586Z",
+  "lastCheckedAt": "2026-11-28T00:00:15.586Z"
 }
