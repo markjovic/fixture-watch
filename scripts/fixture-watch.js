@@ -162,11 +162,23 @@ const { createSessionGuard } = require('./lib/playhq-session.cjs');
 const { slotDecision }       = require('./lib/schedule-gate.cjs');
 const pushover               = require('./lib/pushover.cjs');
 const { teamUrlFor, urlTitleFor } = require('./lib/team-links.cjs');
+const netballClient          = require('./lib/netball-connect.cjs');
+const nb                     = require('./lib/netball-watch.cjs');
 
 const ROOT       = path.join(__dirname, '..');
 const STATE_DIR  = path.join(ROOT, 'state');
 const CONFIG     = path.join(ROOT, 'watch.json');
 const PLAYERS_ST = path.join(STATE_DIR, '_players.json');
+// ⚠️ NETBALL STATE LIVES IN state/, NOT IN watch.json.
+// The spec (§7) puts it in watch.json. That is the one place the spec is wrong
+// about THIS repo, and the deviation is deliberate: watch.json is hand-edited in
+// the GitHub web UI and never written by the bot, while every push here goes out
+// with `merge -X ours`. A bot write to watch.json racing a hand edit would discard
+// the hand edit silently. The spec's actual rule is about CONTENT — "committed
+// state must not identify the child" — and that is satisfied identically here.
+// Everything else in §7 (alias keys, HMAC state keys, the stored field list) is
+// implemented exactly as written.
+const NETBALL_ST = path.join(STATE_DIR, '_netball.json');
 const META_ST    = path.join(STATE_DIR, '_meta.json');
 
 // ─── Arguments ────────────────────────────────────────────────────────────────
@@ -180,6 +192,7 @@ const FORCE     = args.includes('--force');
 const NO_ALERTS = args.includes('--no-alerts');
 const ONLY      = (argOf('players', '') || '').split(/[\s,]+/).filter(Boolean);
 const ONLY_SPORTS = (argOf('sports', '') || '').split(/[\s,]+/).filter(Boolean);
+const NC_NOW      = args.includes('--nc-now');   // ignore the Netball Connect cadence gate
 const DELAY_MS  = (() => { const n = parseInt(argOf('delay', '600'), 10); return Number.isFinite(n) && n >= 0 ? n : 600; })();
 
 const API_URL = 'https://api.playhq.com/graphql';
@@ -938,6 +951,153 @@ function writePlayerSport(playerState, p, sport, data) {
   playerState[p.uuid] = { name: p.name || e.name || null, bySport };
 }
 
+// ─── Netball Connect — a third SOURCE ────────────────────────────────────────
+// ⚠️ FIRST SIGHTING ALERTS, THEN IT IS A KNOWN DATA POINT AND NEVER ALERTS AGAIN.
+// That is the whole model. A team or a registration is recorded under a
+// pseudonymous key the moment it is first seen, and from then on only a CHANGE to
+// a watched field, or its disappearance, is news. The one exception is the very
+// first run for a player: it seeds both lists and sends ONE summary rather than an
+// alert per existing item.
+//
+// ⚠️ ISOLATION IS THE POINT. Separate vendor, separate API, separate login,
+// separate state file, separate failure handling. The caller wraps this in a
+// try/catch and a failure here is typed exactly like a PlayHQ team's — it can
+// never stop the basketball or footy checks, and theirs can never stop this.
+//
+// ⚠️ ABSENT CONFIG MEANS OFF, the same rule as fast publish. No secrets, no
+// `netballConnect` block, or `enabled: false`, and this does nothing at all.
+async function runNetballConnect(ctx) {
+  const { alerts, failures, pendingWrites, nowMs } = ctx;
+
+  const NC = (cfg.netballConnect && typeof cfg.netballConnect === 'object') ? cfg.netballConnect : null;
+  if (!NC || NC.enabled === false) return;
+
+  const email   = process.env.NC_EMAIL    || '';
+  const pw      = process.env.NC_PASSWORD || '';
+  const rawPl   = process.env.NC_PLAYERS  || '';
+  const hmacKey = process.env.NC_STATE_KEY || '';
+  if (!email || !pw || !rawPl || !hmacKey) {
+    console.log(`\n══ Netball Connect — INACTIVE (${!email || !pw ? 'NC_EMAIL/NC_PASSWORD not set' : !rawPl ? 'NC_PLAYERS not set' : 'NC_STATE_KEY not set'})`);
+    return;
+  }
+
+  let players;
+  try { players = JSON.parse(rawPl); } catch (_) { failures.push('Netball Connect: NC_PLAYERS is not valid JSON'); return; }
+  if (!Array.isArray(players) || !players.length) { failures.push('Netball Connect: NC_PLAYERS is not a non-empty array'); return; }
+  for (const p of players) {
+    if (!p || !p.alias || typeof p.userId !== 'number') { failures.push('Netball Connect: every NC_PLAYERS entry needs an alias and a numeric userId'); return; }
+  }
+
+  const CHECK_EVERY_H = Number.isFinite(NC.checkEveryHours) && NC.checkEveryHours > 0 ? NC.checkEveryHours : 6;
+  const EXPECTED      = NC.expected || { teams: 2, registrations: 4 };
+  const CANARY        = NC.teamsTabCanary !== false;
+  const PAGE_LIMIT    = Number.isFinite(NC.regPageLimit) && NC.regPageLimit > 0 ? NC.regPageLimit : 10;
+
+  const state = readJson(NETBALL_ST, null) || { players: {}, lastSuccess: null, lastAttempt: null, lastError: null };
+  if (!state.players) state.players = {};
+
+  // ⚠️ THE CADENCE GATE IS ON lastAttempt, NOT lastSuccess — DELIBERATELY.
+  // Gating on success would retry a wrong password every 30 minutes, which is 48
+  // logins a day at an account that can lock out. Spec §11.3: at most one login
+  // per run and no tight retry loops. A failure therefore waits the full interval
+  // like a success does.
+  const sinceAttempt = state.lastAttempt ? (nowMs - Date.parse(state.lastAttempt)) : Infinity;
+  if (!NC_NOW && Number.isFinite(sinceAttempt) && sinceAttempt < CHECK_EVERY_H * 3600000) {
+    console.log(`\n══ Netball Connect — not due (last attempt ${Math.round(sinceAttempt / 60000)} min ago, every ${CHECK_EVERY_H}h)`);
+    return;
+  }
+
+  console.log(`\n══ Netball Connect  ·  ${players.length} player(s)  ·  every ${CHECK_EVERY_H}h ══`);
+  const client = netballClient.createClient({ email, password: pw, log: (m) => console.log(m) });
+  const ncAlerts = [];
+  const reasons  = [];
+  const today    = new Date(nowMs).toISOString().slice(0, 10);
+
+  state.lastAttempt = new Date(nowMs).toISOString();
+
+  const li = await client.login();
+  if (li.kind !== 'ok') {
+    // A login failure skips BOTH fetches and leaves every player's state untouched.
+    reasons.push(li.reason);
+    console.log(`  ✖ ${li.reason}`);
+  } else {
+    console.log('  nc: login ok');
+
+    for (const p of players) {
+      const ps = state.players[p.alias] || { teams: {}, registrations: {}, teamsTabNonEmpty: false };
+      const seeded = Object.keys(ps.teams || {}).length > 0 || Object.keys(ps.registrations || {}).length > 0 || ps.seeded === true;
+      let tCount = null, rCount = null;
+
+      // ── teams (§4) ────────────────────────────────────────────────────────
+      const t = await client.teams(p.alias, p.userId);
+      if (t.kind !== 'ok') { reasons.push(t.reason); console.log(`  ✖ ${t.reason}`); }
+      else {
+        const recs = nb.teamRecords(t.rows, hmacKey);
+        tCount = recs.length;
+        const { events, nextState } = nb.diffTeams(ps.teams || {}, recs, today);
+        ps.teams = nextState;
+        if (seeded) ncAlerts.push(...events.map(e => ({ ev: e, name: p.name || p.alias })));
+      }
+
+      // ── registrations (§8) ────────────────────────────────────────────────
+      // A teams error does not block this, and vice versa.
+      const r = await client.registrations(p.alias, p.userId, PAGE_LIMIT);
+      if (r.kind !== 'ok') { reasons.push(r.reason); console.log(`  ✖ ${r.reason}`); }
+      else {
+        const recs = nb.regRecords(r.rows, hmacKey);
+        rCount = recs.length;
+        const { events, nextState } = nb.diffRegs(ps.registrations || {}, recs, today);
+        ps.registrations = nextState;
+        if (seeded) ncAlerts.push(...events.map(e => ({ ev: e, name: p.name || p.alias })));
+      }
+
+      // ── the Teams-tab canary (§4.1) — info only, once, never an error ──────
+      if (CANARY && !ps.teamsTabNonEmpty) {
+        const tt = await client.teamsTab(p.alias, p.userId);
+        if (tt.kind === 'ok' && tt.totalCount > 0) { ps.teamsTabNonEmpty = true; ncAlerts.push({ canary: true }); }
+      }
+
+      // ── first run: ONE summary, never an alert per existing item (§5) ──────
+      if (!seeded && tCount !== null && rCount !== null) {
+        ps.seeded = true;
+        alerts.push({ key: 'nc', ...nb.seedAlert(p.name || p.alias, tCount, rCount, EXPECTED) });
+        console.log(`  nc[${p.alias}]: seeded — teams=${tCount} regs=${rCount}`);
+      } else if (tCount !== null || rCount !== null) {
+        console.log(`  nc[${p.alias}]: teams=${tCount === null ? '—' : tCount} regs=${rCount === null ? '—' : rCount} events=${ncAlerts.length}`);
+      }
+
+      state.players[p.alias] = ps;
+    }
+  }
+
+  // ── turn the events into Pushover alerts ───────────────────────────────────
+  const canaryFired = ncAlerts.some(a => a.canary);
+  const byName = new Map();
+  for (const a of ncAlerts) { if (a.canary) continue; if (!byName.has(a.name)) byName.set(a.name, []); byName.get(a.name).push(a.ev); }
+  for (const [name, evs] of byName) for (const built of nb.alertsFor(evs, name)) alerts.push({ key: 'nc', ...built });
+  if (canaryFired) alerts.push({ key: 'nc', ...nb.canaryAlert() });
+
+  // ── errors: once per failure state, with a 24h reminder (§6) ──────────────
+  if (reasons.length) {
+    const d = nb.errorDecision(state.lastError, reasons[0], nowMs);
+    state.lastError = d.next;
+    if (d.alert) alerts.push({ key: 'nc', ...nb.errorAlert(reasons[0]) });
+    else console.log('  (Netball Connect error alert suppressed — same reason as last time, under 24h)');
+    for (const why of reasons) failures.push(`Netball Connect: ${why}`);
+  } else {
+    if (state.lastError) { alerts.push({ key: 'nc', ...nb.recoveryAlert() }); console.log('  nc: recovered'); }
+    state.lastError = null;
+    state.lastSuccess = new Date(nowMs).toISOString();
+  }
+
+  // ⚠️ ONE STATE FILE, ONE KEY, ALL OR NOTHING. Every netball alert carries
+  // key 'nc', so if any of them is rejected by Pushover the whole write is held
+  // back and the next due pass re-detects and re-alerts — the same rule the
+  // PlayHQ teams follow. Baselining a change whose alert never arrived is the one
+  // failure this repo refuses to allow.
+  pendingWrites.set('nc', { file: NETBALL_ST, data: state });
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 (async () => {
   const started = Date.now();
@@ -1401,6 +1561,18 @@ function writePlayerSport(playerState, p, sport, data) {
   }
 
   console.log(`\n[fixture-watch] ${checked} team(s) checked, ${skippedReduced} complete-fixture team(s) not due this slot, ${stopped} stopped, ${outOfScope} out of scope (season long over).`);
+
+  // ── Phase 2n · Netball Connect ────────────────────────────────────────────
+  // A THIRD SOURCE, not a third PlayHQ tenant: a different vendor, a different
+  // API, its own login. The whole thing is wrapped so that NOTHING it does can
+  // affect the PlayHQ results above — a throw in here becomes a typed failure and
+  // the pass carries on to deliver the basketball and footy alerts.
+  try {
+    await runNetballConnect({ alerts, failures, pendingWrites, touched, nowMs: todayMs });
+  } catch (err) {
+    console.log(`  ✖ Netball Connect threw: ${err && err.message ? err.message : 'unknown'}`);
+    failures.push(`Netball Connect: unexpected error — ${err && err.message ? err.message : 'see the log'}`);
+  }
 
   // ── Phase 3 · alerts ──────────────────────────────────────────────────────
   const token = process.env.PUSHOVER_TOKEN || '';
